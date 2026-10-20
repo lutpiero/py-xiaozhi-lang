@@ -1,30 +1,30 @@
-"""Linux应用程序扫描器.
+"""Linux application scanner.
 
-专门用于Linux系统的应用程序扫描和管理
+Specially used for application scanning and management of Linux systems
 """
-
 import platform
 import subprocess
 from pathlib import Path
 from typing import Dict, List
 
+from src.i18n import t
 from src.logging import get_logger
 
 logger = get_logger()
 
 
 def scan_installed_applications() -> List[Dict[str, str]]:
-    """扫描Linux系统中已安装的应用程序.
+    """Scans installed applications in Linux systems.
 
     Returns:
-        List[Dict[str, str]]: 应用程序列表
+        List[Dict[str, str]]: Application list
     """
     if platform.system() != "Linux":
         return []
 
     apps = []
 
-    # 扫描 .desktop 文件
+    # Scans .desktop files
     desktop_dirs = [
         "/usr/share/applications",
         "/usr/local/share/applications",
@@ -41,10 +41,10 @@ def scan_installed_applications() -> List[Dict[str, str]]:
                         apps.append(app_info)
                 except Exception as e:
                     logger.debug(
-                        f"[LinuxScanner] 解析desktop文件失败 {desktop_file}: {e}"
+                        t('[LinuxScanner] 解析desktop文件失败 {value1}: {value3}', value1=desktop_file, value3=e)
                     )
 
-    # 添加常见的Linux系统应用
+    # Add common Linux system applications
     system_apps = [
         {
             "name": "gedit",
@@ -85,15 +85,15 @@ def scan_installed_applications() -> List[Dict[str, str]]:
     ]
     apps.extend(system_apps)
 
-    logger.info(f"[LinuxScanner] 扫描完成，找到 {len(apps)} 个应用程序")
+    logger.info(t('[LinuxScanner] 扫描完成，找到 {value1} 个应用程序', value1=len(apps)))
     return apps
 
 
 def scan_running_applications() -> List[Dict[str, str]]:
-    """扫描Linux系统中正在运行的应用程序.
+    """Scans running applications in Linux systems.
 
     Returns:
-        List[Dict[str, str]]: 正在运行的应用程序列表
+        List[Dict[str, str]]: Running application list
     """
     if platform.system() != "Linux":
         return []
@@ -101,7 +101,7 @@ def scan_running_applications() -> List[Dict[str, str]]:
     apps = []
 
     try:
-        # 使用ps命令获取进程信息
+        # Use ps command to obtain process information
         result = subprocess.run(
             ["ps", "-eo", "pid,ppid,comm,command"],
             capture_output=True,
@@ -110,14 +110,14 @@ def scan_running_applications() -> List[Dict[str, str]]:
         )
 
         if result.returncode == 0:
-            lines = result.stdout.strip().split("\n")[1:]  # 跳过标题行
+            lines = result.stdout.strip().split("\n")[1:]  # Skip header line
 
             for line in lines:
                 parts = line.strip().split(None, 3)
                 if len(parts) >= 4:
                     pid, ppid, comm, command = parts
 
-                    # 过滤掉不需要的进程
+                    # Filter out unwanted processes
                     if _should_include_process(comm, command):
                         display_name = _extract_app_name(comm, command)
                         clean_name = clean_app_name(display_name)
@@ -133,28 +133,28 @@ def scan_running_applications() -> List[Dict[str, str]]:
                             }
                         )
 
-        logger.info(f"[LinuxScanner] 找到 {len(apps)} 个正在运行的应用程序")
+        logger.info(t('[LinuxScanner] 找到 {value1} 个正在运行的应用程序', value1=len(apps)))
         return apps
 
     except Exception as e:
-        logger.error(f"[LinuxScanner] 扫描运行应用失败: {e}", exc_info=True)
+        logger.error(t('[LinuxScanner] 扫描运行应用失败: {value1}', value1=e), exc_info=True)
         return []
 
 
 def _parse_desktop_file(desktop_file: Path) -> Dict[str, str]:
-    """解析.desktop文件.
+    """Parse .desktop file .
 
     Args:
-        desktop_file: .desktop文件路径
+        desktop_file: .desktop file path
 
     Returns:
-        Dict[str, str]: 应用程序信息
+        Dict[str, str]: Application information
     """
     try:
         with open(desktop_file, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # 解析 .desktop 文件
+        # Parse .desktop file
         name = ""
         display_name = ""
         exec_cmd = ""
@@ -163,9 +163,9 @@ def _parse_desktop_file(desktop_file: Path) -> Dict[str, str]:
             if line.startswith("Name="):
                 display_name = line.split("=", 1)[1]
             elif line.startswith("Name[zh_CN]="):
-                display_name = line.split("=", 1)[1]  # 优先使用中文名
+                display_name = line.split("=", 1)[1]  # Prefer using Chinese name
             elif line.startswith("Exec="):
-                exec_cmd = line.split("=", 1)[1].split()[0]  # 取第一个命令
+                exec_cmd = line.split("=", 1)[1].split()[0]  # takes the first command
 
         if display_name and exec_cmd:
             name = clean_app_name(display_name)
@@ -183,35 +183,35 @@ def _parse_desktop_file(desktop_file: Path) -> Dict[str, str]:
 
 
 def _should_include_app(display_name: str) -> bool:
-    """判断是否应该包含该应用程序.
+    """determine whether the application should be included.
 
     Args:
-        display_name: 应用程序显示名称
+        display_name: application display name
 
     Returns:
-        bool: 是否包含
+        bool: Whether to include
     """
     if not display_name:
         return False
 
-    # 排除的应用程序模式
+    # Exclude application mode
     exclude_patterns = [
-        # 系统组件
+        # System components
         "gnome-",
         "kde-",
         "xfce-",
         "unity-",
-        # 开发工具组件
+        # Development Tools Component
         "gdb",
         "valgrind",
         "strace",
         "ltrace",
-        # 系统工具
+        # System tools
         "dconf",
         "gsettings",
         "xdg-",
         "desktop-file-",
-        # 其他系统组件
+        # Other system components
         "help",
         "about",
         "preferences",
@@ -220,7 +220,7 @@ def _should_include_app(display_name: str) -> bool:
 
     display_lower = display_name.lower()
 
-    # 检查排除模式
+    # Check exclusion mode
     for pattern in exclude_patterns:
         if pattern in display_lower:
             return False
@@ -229,18 +229,18 @@ def _should_include_app(display_name: str) -> bool:
 
 
 def _should_include_process(comm: str, command: str) -> bool:
-    """判断是否应该包含该进程.
+    """determines whether the process should be included.
 
     Args:
-        comm: 进程名称
-        command: 完整命令
+        comm: process name
+        command: complete command
 
     Returns:
-        bool: 是否包含
+        bool: Whether to include
     """
-    # 排除系统进程和服务
+    # Exclude system processes and services
     system_processes = {
-        # 内核和核心进程
+        # The kernel and core processes
         "kthreadd",
         "ksoftirqd",
         "migration",
@@ -251,7 +251,7 @@ def _should_include_process(comm: str, command: str) -> bool:
         "kernel",
         "kworker",
         "kcompactd",
-        # 系统服务
+        # System services
         "dbus",
         "networkd",
         "resolved",
@@ -262,7 +262,7 @@ def _should_include_process(comm: str, command: str) -> bool:
         "ssh",
         "avahi",
         "cups",
-        # 桌面环境服务
+        # Desktop environment services
         "gnome-",
         "kde-",
         "xfce-",
@@ -279,15 +279,15 @@ def _should_include_process(comm: str, command: str) -> bool:
         "kwin",
     }
 
-    # 检查是否是系统进程
+    # Check whether it is a system process
     comm_lower = comm.lower()
     command_lower = command.lower()
 
-    # 排除空名称或系统进程
+    # Exclude empty name or system processes
     if not comm or any(proc in comm_lower for proc in system_processes):
         return False
 
-    # 排除系统路径下的进程
+    # Exclude processes under the system path
     if any(
         path in command_lower
         for path in [
@@ -302,14 +302,14 @@ def _should_include_process(comm: str, command: str) -> bool:
     ):
         return False
 
-    # 排除明显的系统服务
+    # Exclude obvious system services
     if any(
         keyword in command_lower
         for keyword in ["daemon", "service", "helper", "agent", "monitor"]
     ):
         return False
 
-    # 只包含用户应用程序
+    # contains only user applications
     user_app_indicators = [
         "/usr/bin/",
         "/usr/local/bin/",
@@ -323,23 +323,23 @@ def _should_include_process(comm: str, command: str) -> bool:
 
 
 def _extract_app_name(comm: str, command: str) -> str:
-    """从进程信息中提取应用程序名称.
+    """Extract application name from process information.
 
     Args:
-        comm: 进程名称
-        command: 完整命令
+        comm: process name
+        command: complete command
 
     Returns:
-        str: 应用程序名称
+        str: Application name
     """
-    # 尝试从命令路径中提取应用名称
+    # attempts to extract the application name from the command path
     if "/" in command:
         try:
-            # 获取可执行文件名
+            # Get executable file name
             exec_path = command.split()[0]
             app_name = Path(exec_path).name
 
-            # 移除常见后缀
+            # Remove common suffix
             if app_name.endswith(".py"):
                 app_name = app_name[:-3]
             elif app_name.endswith(".sh"):
@@ -349,7 +349,7 @@ def _extract_app_name(comm: str, command: str) -> str:
         except (IndexError, AttributeError):
             pass
 
-    # 使用进程名称
+    # Use process name
     return comm if comm else "Unknown"
 
 

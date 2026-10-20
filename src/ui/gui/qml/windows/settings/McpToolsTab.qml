@@ -1,4 +1,4 @@
-// MCP 工具启用：分组 + 单工具开关（黑名单 MCP_TOOLS.DISABLED）
+// MCP tool enablement: grouped single tool switch (blacklist MCP_TOOLS.DISABLED)
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,7 +8,7 @@ import "../../controls"
 ScrollView {
     id: root
     clip: true
-    // 给纵向滚动条留空，避免右侧开关被裁切
+    // Leave space for the vertical scroll bar to avoid the right switch being cut
     rightPadding: 8
     contentWidth: availableWidth
 
@@ -59,7 +59,7 @@ ScrollView {
     function groupStatusText(tools) {
         var on = groupEnabledCount(tools)
         var total = tools.length
-        // 用数量，避免与按钮「全开/全关」文案重复
+        // Use quantity to avoid duplication with the button "Full On/Full Off" text
         return on + "/" + total
     }
 
@@ -97,7 +97,7 @@ ScrollView {
         spacing: Theme.spacingLg
 
         Text {
-            text: "MCP 工具"
+            text: i18n.t("MCP 工具")
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
@@ -105,7 +105,7 @@ ScrollView {
 
         Text {
             Layout.fillWidth: true
-            text: "控制哪些工具暴露给服务端。关闭后不出现在 tools/list，也无法调用。保存后若已连接将自动重连以更新列表。"
+            text: i18n.t("控制哪些工具暴露给服务端。关闭后不出现在 tools/list，也无法调用。保存后若已连接将自动重连以更新列表。")
             font.pixelSize: Theme.fontSizeXs
             color: Theme.textSecondary
             wrapMode: Text.WordWrap
@@ -120,7 +120,7 @@ ScrollView {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
 
-                // 组头
+                // Group header
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Theme.spacingSm
@@ -141,14 +141,14 @@ ScrollView {
                     Item { Layout.fillWidth: true }
 
                     GroupActionButton {
-                        text: "全开"
+                        text: i18n.t("全开")
                         onClicked: {
                             if (settingsModel)
                                 settingsModel.setMcpToolGroupEnabled(groupBlock.modelData.group, true)
                         }
                     }
                     GroupActionButton {
-                        text: "全关"
+                        text: i18n.t("全关")
                         onClicked: {
                             if (settingsModel)
                                 settingsModel.setMcpToolGroupEnabled(groupBlock.modelData.group, false)
@@ -156,7 +156,7 @@ ScrollView {
                     }
                 }
 
-                // 工具列表卡片
+                // Tool list card
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: toolsCol.implicitHeight + Theme.spacingSm * 2
@@ -210,7 +210,7 @@ ScrollView {
                                         }
                                     }
 
-                                    // 固定开关区域，避免被挤出/裁切
+                                    // Fixed switch area to avoid being extruded/cropped
                                     Item {
                                         Layout.preferredWidth: 52
                                         Layout.preferredHeight: 28
@@ -218,7 +218,7 @@ ScrollView {
 
                                         XSwitch {
                                             anchors.centerIn: parent
-                                            // 无文字时避免 contentItem 额外占位
+                                            // Avoid contentItem when no text Additional space
                                             text: ""
                                             checked: toolRow.modelData.enabled
                                             onToggled: {

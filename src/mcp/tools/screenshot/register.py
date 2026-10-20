@@ -1,9 +1,9 @@
-"""截图 MCP 工具注册与工厂."""
-
+"""screenshot MCP tool registration and factory."""
 import asyncio
 import json
 from typing import Callable
 
+from src.i18n import t
 from src.logging import get_logger
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
@@ -13,7 +13,7 @@ logger = get_logger()
 
 
 def create_screenshot_camera() -> ScreenshotCamera:
-    """创建桌面截图实现."""
+    """creates desktop screenshot implementation."""
     return ScreenshotCamera()
 
 
@@ -21,13 +21,13 @@ def register_screenshot_tools(
     add_tool: Callable[[McpTool], None],
     photo_camera=None,
 ) -> None:
-    """注册 take_screenshot.
+    """registration take_screenshot.
 
-    photo_camera: 可选，用于分析时复用 explain URL/token（与 take_photo 同一 camera）。
+    photo_camera: Optional, used to reuse the explain URL/token (the same camera as take_photo) during analysis.
     """
     camera = create_screenshot_camera()
     if photo_camera is not None and hasattr(photo_camera, "get_explain_url"):
-        # 与拍照共用 vision 配置（若已配置）
+        # shares vision configuration with taking pictures (if configured)
         try:
             url = getattr(photo_camera, "explain_url", None) or getattr(
                 photo_camera, "_explain_url", None
@@ -40,9 +40,9 @@ def register_screenshot_tools(
             if token and hasattr(camera, "set_explain_token"):
                 camera.set_explain_token(token)
         except Exception as e:
-            logger.debug(f"同步 vision 配置到截图摄像头失败: {e}", exc_info=True)
+            logger.debug(t('同步 vision 配置到截图摄像头失败: {value1}', value1=e), exc_info=True)
 
-    # analyze 若需要 fallback 到 photo camera 的 explain 设置，挂引用
+    # analyze If you need to fallback to the explain setting of the photo camera, hang the reference
     camera._photo_camera_ref = photo_camera  # type: ignore[attr-defined]
 
     async def take_screenshot(arguments: dict) -> str:
@@ -93,14 +93,14 @@ def register_screenshot_tools(
         McpTool(
             "take_screenshot",
             (
-                "【桌面截图/屏幕分析】当用户提到：截屏、截图、看看桌面、分析屏幕、桌面上有什么、"
+                t("【桌面截图/屏幕分析】当用户提到：截屏、截图、看看桌面、分析屏幕、桌面上有什么、"
                 "屏幕截图、查看当前界面、分析当前页面、读取屏幕内容、屏幕OCR 时调用本工具。"
                 "功能：①截取整个桌面画面；②屏幕内容识别与分析；③屏幕OCR文字提取；④界面元素分析；"
                 "⑤应用程序识别；⑥错误信息截图分析；⑦桌面状态检查；⑧多屏幕截图。"
                 "参数说明：{ question: '你想了解的关于桌面/屏幕的问题', display: '显示器选择(可选)' }；"
                 "display可选值：'main'/'主屏'/'笔记本'(主显示器), 'secondary'/'副屏'/'外屏'(副显示器), 或留空(所有显示器)；"
                 "适用场景：桌面截图、屏幕分析、界面问题诊断、应用状态查看、错误截图分析等。"
-                "注意：该工具会截取桌面，请确保用户同意截图操作。"
+                "注意：该工具会截取桌面，请确保用户同意截图操作。")
             ),
             PropertyList(
                 [
@@ -111,4 +111,4 @@ def register_screenshot_tools(
             take_screenshot,
         )
     )
-    logger.info("已注册 take_screenshot（无全局单例）")
+    logger.info(t("已注册 take_screenshot（无全局单例）"))

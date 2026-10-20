@@ -1,4 +1,4 @@
-"""Textual App：仪表盘 + 设置屏."""
+"""Textual App: Dashboard settings screen."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from textual.widgets import (
     TabPane,
 )
 
-from src.constants.system import SystemConstants
+from src.i18n import t
 from src.logging import get_logger
 from src.ui.tui.settings_data import (
     SETTING_SECTIONS,
@@ -34,10 +34,10 @@ logger = get_logger()
 
 
 class SettingsScreen(ModalScreen[bool]):
-    """配置编辑弹层；返回 True 表示已保存."""
+    """Configuration editing pop-up layer; return True to indicate saved."""
 
     BINDINGS = [
-        Binding("escape", "cancel", "取消", show=True),
+        Binding("escape", "cancel", t("取消"), show=True),
     ]
 
     CSS = """
@@ -90,10 +90,9 @@ class SettingsScreen(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="settings-dialog"):
-            yield Static("设置", id="settings-title")
+            yield Static(t("设置"), id="settings-title")
             yield Static(
-                "编辑后点「保存」写盘并热应用 | Esc 取消 | "
-                "choice 字段请填合法值（见占位提示）",
+                t("编辑后点「保存」写盘并热应用 | Esc 取消 | choice 字段请填合法值（见占位提示）"),
                 id="settings-hint",
             )
             with TabbedContent():
@@ -106,7 +105,7 @@ class SettingsScreen(ModalScreen[bool]):
                                     current = self._values.get(f.path, "")
                                     placeholder = f.help or f.path
                                     if f.kind == "choice" and f.choices:
-                                        placeholder = f"可选: {', '.join(f.choices)}"
+                                        placeholder = t("可选: {choices}", choices=", ".join(f.choices))
                                     elif f.kind == "bool":
                                         placeholder = "true / false"
                                     yield Input(
@@ -117,8 +116,8 @@ class SettingsScreen(ModalScreen[bool]):
                                     )
             yield Static("", id="settings-status")
             with Horizontal(id="settings-actions"):
-                yield Button("取消", id="btn-cancel", variant="default")
-                yield Button("保存", id="btn-save", variant="primary")
+                yield Button(t("取消"), id="btn-cancel", variant="default")
+                yield Button(t("保存"), id="btn-save", variant="primary")
 
     def _collect_values(self) -> dict[str, str]:
         out: dict[str, str] = {}
@@ -152,9 +151,9 @@ class SettingsScreen(ModalScreen[bool]):
 
 
 class XiaozhiTuiApp(App[None]):
-    """小智 TUI 主应用."""
+    """Xiao Zhi TUI main application."""
 
-    TITLE = SystemConstants.APP_DISPLAY_NAME
+    TITLE = t("小智")
     SUB_TITLE = "TUI"
     CSS = """
     Screen {
@@ -188,12 +187,12 @@ class XiaozhiTuiApp(App[None]):
     """
 
     BINDINGS = [
-        Binding("ctrl+c", "quit_app", "退出", show=True, priority=True),
-        Binding("f2", "open_settings", "设置", show=True),
-        Binding("f1", "show_help", "帮助", show=True),
+        Binding("ctrl+c", "quit_app", t("退出"), show=True, priority=True),
+        Binding("f2", "open_settings", t("设置"), show=True),
+        Binding("f1", "show_help", t("帮助"), show=True),
     ]
 
-    status_text: reactive[str] = reactive("待命")
+    status_text: reactive[str] = reactive(t("待命"))
     connected: reactive[bool] = reactive(False)
     auto_mode: reactive[bool] = reactive(False)
     chat_text: reactive[str] = reactive("")
@@ -215,16 +214,14 @@ class XiaozhiTuiApp(App[None]):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         with Vertical(id="status-panel"):
-            yield Static("状态: 待命", id="status-line")
-            yield Static("连接: 未连接 | 模式: 手动 | 表情: neutral", id="meta-line")
-            yield Static("对话: —", id="chat-line")
-            yield Static("音乐: —", id="music-line")
+            yield Static(t("状态: 待命"), id="status-line")
+            yield Static(t("连接: 未连接 | 模式: 手动 | 表情: neutral"), id="meta-line")
+            yield Static(t("对话: —"), id="chat-line")
+            yield Static(t("音乐: —"), id="music-line")
         yield RichLog(id="log-panel", highlight=True, markup=True, max_lines=500)
         with Horizontal(id="input-row"):
             yield Input(
-                placeholder=(
-                    "输入文本发送 | r 对话 | x 打断 | s 设置 | q 退出 | h 帮助"
-                ),
+                placeholder=t("输入文本发送 | r 对话 | x 打断 | s 设置 | q 退出 | h 帮助"),
                 id="cmd-input",
             )
         yield Footer()
@@ -234,8 +231,7 @@ class XiaozhiTuiApp(App[None]):
         self._install_log_handler()
         self._refresh_status_widgets()
         self.write_log(
-            f"[bold cyan]{SystemConstants.APP_DISPLAY_NAME} TUI[/]  "
-            "F2 设置 · F1 帮助 · Ctrl+C 退出"
+            t("[bold cyan]{name} TUI[/]  F2 设置 · F1 帮助 · Ctrl+C 退出", name=t("小智"))
         )
 
     def watch_status_text(self, _value: str) -> None:
@@ -258,17 +254,17 @@ class XiaozhiTuiApp(App[None]):
 
     def _refresh_status_widgets(self) -> None:
         try:
-            conn = "已连接" if self.connected else "未连接"
-            mode = "自动" if self.auto_mode else "手动"
-            self.query_one("#status-line", Static).update(f"状态: {self.status_text}")
+            conn = t("已连接") if self.connected else t("未连接")
+            mode = t("自动") if self.auto_mode else t("手动")
+            self.query_one("#status-line", Static).update(t("状态: {status}", status=self.status_text))
             self.query_one("#meta-line", Static).update(
-                f"连接: {conn} | 模式: {mode} | 表情: {self.emotion}"
+                t("连接: {connected} | 模式: {mode} | 表情: {emotion}", connected=conn, mode=mode, emotion=self.emotion)
             )
             self.query_one("#chat-line", Static).update(
-                f"对话: {self.chat_text or '—'}"
+                t("对话: {text}", text=self.chat_text or "—")
             )
             self.query_one("#music-line", Static).update(
-                f"音乐: {self.music_line or '—'}"
+                t("音乐: {music}", music=self.music_line or "—")
             )
         except Exception:
             pass
@@ -310,25 +306,19 @@ class XiaozhiTuiApp(App[None]):
 
     def action_show_help(self) -> None:
         self.write_log(
-            "[bold cyan]帮助[/]\n"
-            "  文本 → 发送给助手\n"
-            "  r → 开始/停止对话\n"
-            "  x → 打断\n"
-            "  s / F2 → 设置\n"
-            "  q / Ctrl+C → 退出\n"
-            "  h / F1 → 帮助"
+            t("[bold cyan]帮助[/]\n  文本 → 发送给助手\n  r → 开始/停止对话\n  x → 打断\n  s / F2 → 设置\n  q / Ctrl+C → 退出\n  h / F1 → 帮助")
         )
 
     def action_open_settings(self) -> None:
         def _done(saved: bool | None) -> None:
             if saved:
-                self.write_log("[green]配置已保存，正在热应用…[/]")
+                self.write_log(t("[green]配置已保存，正在热应用…[/]"))
                 if self._on_settings_saved:
                     try:
                         self._on_settings_saved()
                     except Exception as e:
-                        logger.error(f"设置保存回调失败: {e}", exc_info=True)
-                        self.write_log(f"[red]热应用失败: {e}[/]")
+                        logger.error(t('设置保存回调失败: {value1}', value1=e), exc_info=True)
+                        self.write_log(t("[red]热应用失败: {error}[/]", error=e))
 
         self.push_screen(SettingsScreen(), _done)
 

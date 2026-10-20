@@ -3,6 +3,7 @@ from collections import deque
 import numpy as np
 import soxr
 
+from src.i18n import t
 from src.logging import get_logger
 from src.utils.audio_utils import downmix_to_mono, upmix_mono_to_channels
 
@@ -10,13 +11,13 @@ logger = get_logger()
 
 
 class AudioConverter:
-    """音频格式转换器
+    """Audio format converter
 
-    负责采样率转换和声道转换，内部维护缓冲区以凑够目标帧大小。
+    is responsible for sample rate conversion and channel conversion, and internally maintains the buffer to make up the target frame size.
     """
 
     def __init__(self):
-        """初始化转换器"""
+        """Initialize the converter"""
         self.input_resampler = None
         self.output_resampler = None
         self._input_buffer = deque()
@@ -29,40 +30,40 @@ class AudioConverter:
     def setup_input_converter(
         self, from_rate: int, to_rate: int, from_channels: int, to_channels: int = 1
     ):
-        """配置输入转换链（设备 → 协议）
+        """Configure the input conversion chain (device → protocol)
 
         Args:
-            from_rate: 设备采样率
-            to_rate: 协议采样率（通常16kHz）
-            from_channels: 设备声道数
-            to_channels: 协议声道数（通常1）
+            from_rate: Device sampling rate
+            to_rate: Protocol sampling rate (usually 16kHz)
+            from_channels: Number of device channels
+            to_channels: Number of protocol channels (usually 1)
         """
         self.input_channels = from_channels
         self.needs_input_downmix = from_channels > to_channels
 
         if self.needs_input_downmix:
-            logger.info(f"输入声道下混: {from_channels}ch → {to_channels}ch")
+            logger.info(t('输入声道下混: {value1}ch → {value3}ch', value1=from_channels, value3=to_channels))
 
         if from_rate != to_rate:
             self.input_resampler = soxr.ResampleStream(
                 from_rate,
                 to_rate,
-                num_channels=to_channels,  # 下混后的声道数
+                num_channels=to_channels,  # The number of channels after downmixing
                 dtype="float32",
-                quality="QQ",  # 快速质量（适合实时处理）
+                quality="QQ",  # Fast quality (suitable for real-time processing)
             )
-            logger.info(f"输入重采样: {from_rate}Hz → {to_rate}Hz")
+            logger.info(t('输入重采样: {value1}Hz → {value3}Hz', value1=from_rate, value3=to_rate))
 
     def setup_output_converter(
         self, from_rate: int, to_rate: int, from_channels: int = 1, to_channels: int = 2
     ):
-        """配置输出转换链（协议 → 设备）
+        """Configure the output conversion chain (protocol → device)
 
         Args:
-            from_rate: 协议采样率（通常24kHz）
-            to_rate: 设备采样率
-            from_channels: 协议声道数（通常1）
-            to_channels: 设备声道数
+            from_rate: Protocol sampling rate (usually 24kHz)
+            to_rate: device sampling rate
+            from_channels: Number of protocol channels (usually 1)
+            to_channels: Number of device channels
         """
         self.output_channels = to_channels
         self.needs_output_upmix = to_channels > from_channels
@@ -71,44 +72,44 @@ class AudioConverter:
             self.output_resampler = soxr.ResampleStream(
                 from_rate,
                 to_rate,
-                num_channels=from_channels,  # 上混前的声道数
+                num_channels=from_channels,  # The number of channels before upmixing
                 dtype="float32",
                 quality="QQ",
             )
-            logger.info(f"输出重采样: {from_rate}Hz → {to_rate}Hz")
+            logger.info(t('输出重采样: {value1}Hz → {value3}Hz', value1=from_rate, value3=to_rate))
 
         if self.needs_output_upmix:
-            logger.info(f"输出声道上混: {from_channels}ch → {to_channels}ch")
+            logger.info(t('输出声道上混: {value1}ch → {value3}ch', value1=from_channels, value3=to_channels))
 
     def convert_input(
         self, audio: np.ndarray, target_size: int
     ) -> np.ndarray | None:
-        """输入转换：多声道/高采样率 → 单声道/16kHz
+        """Input conversion: multichannel/high sample rate → mono/16kHz
 
         Args:
-            audio: float32 音频数据
-            target_size: 目标样本数
+            audio: float32 Audio data
+            target_size: Target number of samples
 
         Returns:
-            转换后的 float32 数据，或 None（数据不足）
+            Converted float32 data, or None (insufficient data)
         """
-        # 1. 下混（使用 audio_utils）
+        # 1. Downmix (using audio_utils)
         if self.needs_input_downmix:
             audio = downmix_to_mono(audio, keepdims=False)
         else:
             audio = audio.flatten()
 
-        # 2. 重采样
+        # 2. Resampling
         if self.input_resampler:
             resampled = self.input_resampler.resample_chunk(audio, last=False)
             if len(resampled) > 0:
                 self._input_buffer.extend(resampled)
 
-            # 累积到目标大小
+            # accumulates to the target size
             if len(self._input_buffer) < target_size:
                 return None
 
-            # 取出一帧
+            # Get out one frame
             frame_data = [self._input_buffer.popleft() for _ in range(target_size)]
             return np.array(frame_data, dtype=np.float32)
 
@@ -117,29 +118,29 @@ class AudioConverter:
     def convert_output(
         self, audio: np.ndarray, target_frames: int
     ) -> np.ndarray | None:
-        """输出转换：单声道/24kHz → 多声道/高采样率
+        """Output conversion: mono/24kHz → multichannel/high sample rate
 
         Args:
-            audio: float32 音频数据
-            target_frames: 目标帧数
+            audio: float32 Audio data
+            target_frames: Target number of frames
 
         Returns:
-            转换后的 float32 数据
+            Converted float32 data
         """
-        # 1. 重采样
+        # 1. Resampling
         if self.output_resampler:
             resampled = self.output_resampler.resample_chunk(audio, last=False)
             if len(resampled) > 0:
                 self._output_buffer.extend(resampled)
 
-            # 取出目标帧数
+            # Get out the target frame number
             if len(self._output_buffer) < target_frames:
                 return None
 
             frame_data = [self._output_buffer.popleft() for _ in range(target_frames)]
             audio = np.array(frame_data, dtype=np.float32)
 
-        # 2. 上混（使用 audio_utils）
+        # 2. Upmixing (using audio_utils)
         if self.needs_output_upmix:
             audio = upmix_mono_to_channels(audio, self.output_channels)
         else:
@@ -148,9 +149,9 @@ class AudioConverter:
         return audio
 
     def drain_output_buffer(self, target_frames: int) -> np.ndarray | None:
-        """排出 resampler 缓冲区中的剩余数据（带上混）。
+        """Drain remaining data in the resampler buffer (with mixing).
 
-        用于队列耗尽但缓冲区差少量样本时，避免整帧静音。
+        is used to avoid entire frame silence when the queue is exhausted but the buffer is short of a few samples.
         """
         available = min(len(self._output_buffer), target_frames)
         if available == 0:
@@ -167,17 +168,17 @@ class AudioConverter:
         return audio
 
     def clear_output_buffer(self):
-        """只清空输出缓冲区（用于 TTS 停止时防回声，不影响输入管线）"""
+        """Clear the output buffer only (for TTS Anti-echo when stopped, does not affect the input pipeline)"""
         self._output_buffer.clear()
 
     def clear_buffers(self):
-        """清空缓冲区"""
+        """Clear the buffer"""
         self._input_buffer.clear()
         self._output_buffer.clear()
-        logger.debug("音频转换器缓冲区已清空")
+        logger.debug(t("音频转换器缓冲区已清空"))
 
     def close(self):
-        """释放 soxr 重采样器，防止 nanobind C++ 对象泄漏."""
+        """Release soxr resampler, prevent nanobind C Object leak."""
         self.clear_buffers()
         self.input_resampler = None
         self.output_resampler = None

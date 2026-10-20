@@ -1,15 +1,15 @@
-"""快捷键插件模块.
+"""Shortcut key plug-in module.
 
-提供跨平台的全局快捷键支持：
-- macOS: 使用 Quartz Event Tap (PyObjC)
-- Linux/Windows: 使用 pynput
+Provides cross-platform global shortcut key support:
+- macOS: use Quartz Event Tap (PyObjC)
+- Linux/Windows: use pynput
 """
-
 import asyncio
 import sys
-from typing import TYPE_CHECKING, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from src.constants.constants import AbortReason
+from src.i18n import t
 from src.logging import get_logger
 from src.plugins.base import Plugin
 from src.utils.config_manager import get_config
@@ -27,46 +27,46 @@ __all__ = ["ShortcutBackend", "ShortcutConfig", "ShortcutsPlugin", "create_backe
 def create_backend(
     loop: Optional[asyncio.AbstractEventLoop] = None,
 ) -> Optional[ShortcutBackend]:
-    """创建适合当前平台的快捷键后端.
+    """Create a shortcut key backend suitable for the current platform.
 
     Args:
-        loop: asyncio 事件循环
+        loop: asyncio event loop
 
     Returns:
-        快捷键后端实例，如果无法创建则返回 None
+        Shortcut key backend instance, returned if it cannot be created None
     """
     if sys.platform == "darwin":
-        # macOS: 优先使用 Quartz Event Tap
+        # macOS: use Quartz Event first Tap
         try:
             from .macos_backend import MacOSShortcutBackend
 
-            logger.info("使用 macOS Quartz Event Tap 后端")
+            logger.info(t("使用 macOS Quartz Event Tap 后端"))
             return MacOSShortcutBackend(loop)
         except ImportError as e:
-            logger.warning(f"无法加载 macOS 后端: {e}", exc_info=True)
-            logger.info("回退到 pynput 后端")
-            # 回退到 pynput
+            logger.warning(t('无法加载 macOS 后端: {value1}', value1=e), exc_info=True)
+            logger.info(t("回退到 pynput 后端"))
+            # Fall back to pynput
             try:
                 from .pynput_backend import PynputShortcutBackend
 
                 return PynputShortcutBackend(loop)
             except ImportError as e2:
-                logger.error(f"无法加载 pynput 后端: {e2}")
+                logger.error(t('无法加载 pynput 后端: {value1}', value1=e2))
                 return None
     else:
-        # Linux/Windows: 使用 pynput
+        # Linux/Windows: use pynput
         try:
             from .pynput_backend import PynputShortcutBackend
 
-            logger.info("使用 pynput 后端")
+            logger.info(t("使用 pynput 后端"))
             return PynputShortcutBackend(loop)
         except ImportError as e:
-            logger.error(f"无法加载 pynput 后端: {e}", exc_info=True)
+            logger.error(t('无法加载 pynput 后端: {value1}', value1=e), exc_info=True)
             return None
 
 
 class _CmdAdapter:
-    """快捷键命令适配器."""
+    """Shortcut key command adapter."""
 
     def __init__(self, cmd: "PluginCommands", ctx: "PluginContext"):
         self._cmd = cmd
@@ -84,22 +84,22 @@ class _CmdAdapter:
             )
             await self._cmd.start_listening(mode)
         except Exception as e:
-            logger.error(f"切换对话状态失败: {e}", exc_info=True)
+            logger.error(t('切换对话状态失败: {value1}', value1=e), exc_info=True)
 
     async def abort_speaking(self, reason):
         try:
             await self._cmd.abort_speaking(reason)
         except Exception as e:
-            logger.error(f"中断对话失败: {e}", exc_info=True)
+            logger.error(t('中断对话失败: {value1}', value1=e), exc_info=True)
 
 
 class ShortcutsPlugin(Plugin):
-    """快捷键插件."""
+    """Shortcut key plug-in."""
 
     name = "shortcuts"
-    priority = 70  # 最低优先级，依赖 UIPlugin
+    priority = 70  # Lowest priority, dependency UIPlugin
 
-    # 快捷键名称常量
+    # Shortcut key name constant
     MANUAL_PRESS = "MANUAL_PRESS"
     AUTO_TOGGLE = "AUTO_TOGGLE"
     ABORT = "ABORT"
@@ -122,51 +122,51 @@ class ShortcutsPlugin(Plugin):
         self._loop = asyncio.get_running_loop()
         self._event_bus = ctx.event_bus
 
-        # 加载配置
+        # Load configuration
         self._load_config()
 
-        # 创建后端
+        # Create backend
         self._backend = create_backend(self._loop)
         if not self._backend:
-            logger.warning("无法创建快捷键后端，快捷键功能将不可用")
+            logger.warning(t("无法创建快捷键后端，快捷键功能将不可用"))
 
-        # 订阅配置变更事件
+        # Subscribe to configuration change events
         from src.core.event_bus import Events
 
         ctx.event_bus.on(Events.CONFIG_CHANGED, self._on_config_changed)
 
     def _load_config(self) -> None:
-        """加载快捷键配置."""
+        """Load shortcut key configuration."""
         self._shortcuts_config = self._config.get_config("SHORTCUTS", {}) or {}
         self._enabled = bool(self._shortcuts_config.get("ENABLED", True))
 
     async def _on_config_changed(self, data=None) -> None:
-        """配置变更时重新加载."""
-        logger.info("ShortcutsPlugin: 收到配置变更事件，重新加载配置")
+        """Reload when configuration changes."""
+        logger.info(t("ShortcutsPlugin: 收到配置变更事件，重新加载配置"))
         self.reload_from_config()
 
     async def start(self) -> None:
-        """启动插件."""
+        """Start plug-in."""
         if not self._enabled:
-            logger.info("快捷键功能已禁用")
+            logger.info(t("快捷键功能已禁用"))
             return
 
         if not self._backend:
-            logger.warning("快捷键后端不可用")
+            logger.warning(t("快捷键后端不可用"))
             return
 
-        # 注册快捷键
+        # Register shortcut keys
         self._register_shortcuts()
 
-        # 启动后端
+        # Start backend
         success = await self._backend.start()
         if success:
-            logger.info("快捷键插件已启动")
+            logger.info(t("快捷键插件已启动"))
         else:
-            logger.error("快捷键后端启动失败")
+            logger.error(t("快捷键后端启动失败"))
 
     def _register_shortcuts(self) -> None:
-        """注册所有快捷键."""
+        """Register all shortcut keys."""
         if not self._backend:
             return
 
@@ -195,7 +195,7 @@ class ShortcutsPlugin(Plugin):
             self._backend.register(name, config, handler)
 
     def _handle_manual_press(self) -> None:
-        """处理手动按键快捷键 - 使用 UI_MANUAL_TOGGLE 事件."""
+        """handles manual key shortcuts - use UI_MANUAL_TOGGLE Event."""
         if not self._event_bus or not self._loop:
             return
 
@@ -206,7 +206,7 @@ class ShortcutsPlugin(Plugin):
         )
 
     def _handle_auto_toggle(self) -> None:
-        """处理自动对话切换快捷键."""
+        """Handles the automatic dialogue switching shortcut key."""
         if not self._adapter or not self._loop:
             return
 
@@ -215,7 +215,7 @@ class ShortcutsPlugin(Plugin):
         )
 
     def _handle_abort(self) -> None:
-        """处理中断快捷键."""
+        """handles interrupt shortcut keys."""
         if not self._adapter or not self._loop:
             return
 
@@ -224,7 +224,7 @@ class ShortcutsPlugin(Plugin):
         )
 
     def _handle_mode_toggle(self) -> None:
-        """处理模式切换快捷键."""
+        """Handles the mode switching shortcut key."""
         if not self._event_bus or not self._loop:
             return
 
@@ -235,7 +235,7 @@ class ShortcutsPlugin(Plugin):
         )
 
     def _handle_window_toggle(self) -> None:
-        """处理窗口切换快捷键."""
+        """Handles the window switching shortcut key."""
         if not self._event_bus or not self._loop:
             return
 
@@ -246,7 +246,7 @@ class ShortcutsPlugin(Plugin):
         )
 
     async def stop(self) -> None:
-        """停止插件."""
+        """stops the plugin."""
         if self._backend:
             await self._backend.stop()
 
@@ -256,18 +256,18 @@ class ShortcutsPlugin(Plugin):
             pool.register("shortcuts.backend", backend.stop)
 
     def reload_from_config(self) -> None:
-        """从配置重新加载."""
+        """reloads from configuration."""
         self._load_config()
 
         if not self._backend:
             return
 
-        # 注销所有快捷键
+        # Unregister all shortcut keys
         self._backend.unregister_all()
 
         if self._enabled:
-            # 重新注册
+            # Re-register
             self._register_shortcuts()
-            logger.info("快捷键配置已重新加载")
+            logger.info(t("快捷键配置已重新加载"))
         else:
-            logger.info("快捷键功能已禁用")
+            logger.info(t("快捷键功能已禁用"))

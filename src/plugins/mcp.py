@@ -1,10 +1,10 @@
-"""MCP 插件.
+"""MCP plug-in.
 
-管理 MCP 工具和消息处理。McpServer / MusicPlayer 必须由容器注入。
+manages MCP tools and message processing. McpServer / MusicPlayer must be injected by the container.
 """
-
 from typing import TYPE_CHECKING, Any, Optional
 
+from src.i18n import t
 from src.logging import get_logger
 from src.mcp.mcp_server import McpServer
 from src.plugins.base import Plugin
@@ -18,7 +18,7 @@ logger = get_logger()
 
 class McpPlugin(Plugin):
     name = "mcp"
-    priority = 20  # 工具注册，需要较早初始化
+    priority = 20  # Tool registration needs to be initialized earlier.
 
     def __init__(
         self,
@@ -27,9 +27,9 @@ class McpPlugin(Plugin):
     ) -> None:
         super().__init__()
         if server is None:
-            raise ValueError("McpPlugin 需要容器注入的 McpServer")
+            raise ValueError(t("McpPlugin 需要容器注入的 McpServer"))
         if music_player is None:
-            raise ValueError("McpPlugin 需要容器注入的 MusicPlayer")
+            raise ValueError(t("McpPlugin 需要容器注入的 MusicPlayer"))
         self._server: McpServer = server
         self._music_player = music_player
 
@@ -41,11 +41,11 @@ class McpPlugin(Plugin):
             try:
                 await cmd.send_mcp_message(msg)
             except Exception as e:
-                logger.error(f"MCP 发送响应失败: {e}", exc_info=True)
+                logger.error(t('MCP 发送响应失败: {value1}', value1=e), exc_info=True)
 
         try:
             server.set_send_callback(_send)
-            # 摄像头：懒创建一次，挂到 server，供 vision 配置与 take_photo 共用
+            # Camera: lazily created once and hung to the server for vision configuration and take_photo to share.
             from src.mcp.tools.camera import create_camera, register_camera_tools
             from src.mcp.tools.screenshot import register_screenshot_tools
 
@@ -56,13 +56,13 @@ class McpPlugin(Plugin):
 
             server.add_common_tools(music_player=self._music_player)
         except Exception as e:
-            logger.error(f"MCP 工具注册失败: {e}", exc_info=True)
+            logger.error(t('MCP 工具注册失败: {value1}', value1=e), exc_info=True)
 
         try:
             self._music_player.set_event_bus(ctx.event_bus, ctx)
-            logger.info("MusicPlayer EventBus 已注入")
+            logger.info(t("MusicPlayer EventBus 已注入"))
         except Exception as e:
-            logger.warning(f"设置 MusicPlayer EventBus 失败: {e}", exc_info=True)
+            logger.warning(t('设置 MusicPlayer EventBus 失败: {value1}', value1=e), exc_info=True)
 
     async def on_incoming_json(self, message: Any) -> None:
         if not isinstance(message, dict):
@@ -74,7 +74,7 @@ class McpPlugin(Plugin):
                     return
                 await self._server.parse_message(payload)
         except Exception as e:
-            logger.error(f"MCP 消息处理失败: {e}", exc_info=True)
+            logger.error(t('MCP 消息处理失败: {value1}', value1=e), exc_info=True)
 
     def register_resources(self, pool) -> None:
         async def _mcp_cleanup():
@@ -84,11 +84,11 @@ class McpPlugin(Plugin):
                     await music_player.stop()
                 music_player.detach()
             except Exception as e:
-                logger.debug(f"停止/detach 音乐播放器失败: {e}", exc_info=True)
+                logger.debug(t('停止/detach 音乐播放器失败: {value1}', value1=e), exc_info=True)
 
             try:
                 self._server.detach()
             except Exception as e:
-                logger.debug(f"MCP shutdown 清理失败: {e}", exc_info=True)
+                logger.debug(t('MCP shutdown 清理失败: {value1}', value1=e), exc_info=True)
 
         pool.register("mcp.server", _mcp_cleanup)

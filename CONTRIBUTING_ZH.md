@@ -92,6 +92,21 @@ pytest
 4. 在 CI 通过且反馈处理完成后合并。
 5. 合并后按正常发布流程进入后续版本，合并不等于立即发布。
 
+## 国际化
+
+面向用户的 Python 和 QML 文案统一存放在 `src/i18n/locales/` 的 JSON 目录中。
+Python 中使用 `t("...")`，QML 中使用 `i18n.t("...")` 包裹源文案，然后刷新目录：
+
+```bash
+python scripts/i18n_extract.py --write
+python scripts/i18n_translate.py --write
+python scripts/i18n_check.py
+```
+
+产品术语请写入 `scripts/i18n_overrides.json`，不要直接修改机器翻译结果。
+语言按 `--lang`、`XIAOZHI_LANG`、`SYSTEM_OPTIONS.LANGUAGE`、系统语言的顺序解析；
+切换语言后需重启应用生效。
+
 ## 详细文档
 
 - 项目文档：<https://huangjunsen0406.github.io/py-xiaozhi/>

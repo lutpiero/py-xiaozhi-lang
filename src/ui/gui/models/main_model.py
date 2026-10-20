@@ -1,14 +1,15 @@
-"""主窗口 ViewModel."""
+"""Main window ViewModel."""
 
 from PySide6.QtCore import Property, Signal
 
+from src.i18n import t
 from src.ui.gui.models.base_model import BaseModel
 
 
 class MainModel(BaseModel):
-    """主窗口数据模型."""
+    """Main window data model."""
 
-    # 信号
+    # Signal
     ttsTextChanged = Signal()
     musicLineChanged = Signal()
     emotionUrlChanged = Signal()
@@ -26,14 +27,14 @@ class MainModel(BaseModel):
         self._status_text = ""
         self._connected = False
         self._auto_mode = False
-        self._mode_text = "手动对话"
-        self._button_text = "按住后说话"
+        self._mode_text = t("手动对话")
+        self._button_text = t("按住后说话")
 
     # ========== Properties ==========
 
     @Property(str, notify=ttsTextChanged)
     def ttsText(self) -> str:
-        # 历史属性名还是 ttsText，实际是对话内容
+        # The historical attribute name is still ttsText, which is actually the dialogue content
         return self._tts_text
 
     @Property(str, notify=musicLineChanged)
@@ -94,11 +95,11 @@ class MainModel(BaseModel):
             self.connectedChanged.emit()
 
     def set_auto_mode(self, auto: bool):
-        # 默认按钮文案；对话进行中会再被 Session 改成「停止对话」
+        # Default button copy; during the dialogue, it will be changed to "Stop dialogue" by Session
         if self._auto_mode != auto:
             self._auto_mode = auto
-            self._mode_text = "自动对话" if auto else "手动对话"
-            self._button_text = "开始对话" if auto else "按住后说话"
+            self._mode_text = t("自动对话") if auto else t("手动对话")
+            self._button_text = t("开始对话") if auto else t("按住后说话")
             self.autoModeChanged.emit()
             self.modeTextChanged.emit()
             self.buttonTextChanged.emit()

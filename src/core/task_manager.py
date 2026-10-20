@@ -1,35 +1,29 @@
-"""任务管理器.
+"""task manager.
 
-统一管理异步任务的创建、追踪和清理。
+Unifiedly manages the creation, tracking and cleanup of asynchronous tasks.
 """
-
 import asyncio
 from typing import Any, Awaitable, Callable, Optional
 
+from src.i18n import t
 from src.logging import get_logger
 
 logger = get_logger()
 
 
 class TaskManager:
-    """异步任务管理器.
+    """Asynchronous Task Manager.
 
-    职责:
-    - 创建和追踪异步任务
-    - 关闭时统一取消所有任务
-    - 提供线程安全的任务调度
+    Responsibilities:
+    - Create and track asynchronous tasks
+    - Cancel all tasks when closing
+    - Provides thread-safe task scheduling
 
-    用法:
+    Usage:
         tm = TaskManager()
         tm.set_loop(asyncio.get_running_loop())
-
-        # 创建任务
         task = tm.spawn(some_coroutine(), "task_name")
-
-        # 线程安全调度
         tm.schedule_nowait(some_function, arg1, arg2)
-
-        # 关闭时清理
         await tm.cancel_all()
     """
 
@@ -40,52 +34,52 @@ class TaskManager:
         self._running: bool = False
 
     def initialize(self, loop: asyncio.AbstractEventLoop = None) -> None:
-        """初始化任务管理器.
+        """Initialize the task manager.
 
         Args:
-            loop: 事件循环，为 None 时使用当前运行的循环
+            loop: event loop, when None, use the currently running loop
         """
         self._loop = loop or asyncio.get_running_loop()
         self._shutdown_event = asyncio.Event()
         self._running = True
-        logger.debug("TaskManager 已初始化")
+        logger.debug(t("TaskManager 已初始化"))
 
     @property
     def loop(self) -> Optional[asyncio.AbstractEventLoop]:
         """
-        获取事件循环.
+        Gets the event loop.
         """
         return self._loop
 
     @property
     def running(self) -> bool:
         """
-        是否正在运行.
+        Is it running.
         """
         return self._running
 
     @property
     def shutdown_event(self) -> Optional[asyncio.Event]:
         """
-        获取关闭事件.
+        Gets the shutdown event.
         """
         return self._shutdown_event
 
     def spawn(self, coro: Awaitable[Any], name: str) -> Optional[asyncio.Task]:
-        """创建异步任务并追踪.
+        """Creates an asynchronous task and tracks the task object created by
 
         Args:
-            coro: 协程对象
-            name: 任务名称
+            coro: Coroutine object
+            name: task name
 
         Returns:
-            创建的任务对象，如果应用正在关闭则返回 None
+            , returns if the application is closing None
         """
-        # 检查是否正在关闭
+        # Check if it is shutting down
         if not self._running or (
             self._shutdown_event and self._shutdown_event.is_set()
         ):
-            logger.debug(f"跳过任务创建（应用正在关闭）: {name}")
+            logger.debug(t('跳过任务创建（应用正在关闭）: {value1}', value1=name))
             return None
 
         task = asyncio.create_task(coro, name=name)
@@ -96,30 +90,30 @@ class TaskManager:
             if not t.cancelled():
                 exc = t.exception()
                 if exc:
-                    # done callback 无 active exception context，必须传 exc 本体
-                    logger.error(f"任务 {name} 异常结束: {exc}", exc_info=exc)
+                    # done callback has no active exception context and must pass the exc body
+                    logger.error(t('任务 {value1} 异常结束: {value3}', value1=name, value3=exc), exc_info=exc)
 
         task.add_done_callback(_on_done)
         return task
 
     def schedule_nowait(self, fn: Callable, *args, **kwargs) -> None:
-        """线程安全地调度可调用对象.
+        """Thread-safely schedules callable objects.
 
-        如果可调用对象返回协程，会自动创建任务。
+        If the callable object returns to the coroutine, the task will be automatically created.
 
         Args:
-            fn: 可调用对象
-            *args: 位置参数
-            **kwargs: 关键字参数
+            fn: Callable object
+            *args: Positional parameters
+            **kwargs: Keyword parameters
         """
-        # 检查是否正在关闭 - 静默拒绝
+        # Checks for shutdown in progress - silently rejects
         if not self._running or (
             self._shutdown_event and self._shutdown_event.is_set()
         ):
             return
 
         if not self._loop or self._loop.is_closed():
-            # 关闭时静默跳过，不打印警告
+            # Silently skips when closing, does not print warnings
             return
 
         def _runner():
@@ -132,29 +126,29 @@ class TaskManager:
                     if task is None:
                         result.close()
             except Exception as e:
-                logger.error(f"调度的可调用执行失败: {e}", exc_info=True)
+                logger.error(t('调度的可调用执行失败: {value1}', value1=e), exc_info=True)
 
         self._loop.call_soon_threadsafe(_runner)
 
     async def wait_shutdown(self) -> None:
         """
-        等待关闭信号.
+        Waits for shutdown signal.
         """
         if self._shutdown_event:
             await self._shutdown_event.wait()
 
     def request_shutdown(self) -> None:
         """
-        请求关闭.
+        Requests shutdown.
         """
         if self._shutdown_event and not self._shutdown_event.is_set():
             self._shutdown_event.set()
-            logger.info("收到关闭请求")
+            logger.info(t("收到关闭请求"))
 
     async def cancel_all(self) -> None:
-        """取消所有追踪的任务.
+        """Cancel all tracked tasks.
 
-        会等待所有任务完成或取消。
+        will wait for all tasks to be completed or canceled.
         """
         self._running = False
 
@@ -164,28 +158,28 @@ class TaskManager:
         if not self._tasks:
             return
 
-        logger.info(f"正在取消 {len(self._tasks)} 个任务...")
+        logger.info(t('正在取消 {value1} 个任务...', value1=len(self._tasks)))
 
-        # 取消所有任务
+        # Cancel all tasks
         for task in list(self._tasks):
             if not task.done():
                 task.cancel()
 
-        # 等待所有任务完成
+        # Waits for all tasks to complete
         if self._tasks:
             await asyncio.gather(*self._tasks, return_exceptions=True)
             self._tasks.clear()
 
-        logger.info("所有任务已取消")
+        logger.info(t("所有任务已取消"))
 
     def task_count(self) -> int:
         """
-        获取当前任务数量.
+        Gets the current number of tasks.
         """
         return len(self._tasks)
 
     def get_task_names(self) -> list[str]:
         """
-        获取所有任务名称.
+        Gets all task names.
         """
         return [t.get_name() for t in self._tasks if not t.done()]

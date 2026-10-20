@@ -1,0 +1,51 @@
+"""Unified locale support for Python, CLI/TUI and QML text."""
+
+from .translator import (
+    DEFAULT_LANGUAGE,
+    ENV_LANGUAGE,
+    LANGUAGE_LABELS,
+    SUPPORTED_LANGUAGES,
+    SYSTEM_LANGUAGE,
+    available_languages,
+    catalog_messages,
+    clear_missing_keys,
+    detect_system_language,
+    get_language,
+    get_language_label,
+    initialize_language,
+    load_catalog,
+    missing_keys,
+    normalize_language,
+    placeholder_indexes,
+    placeholder_names,
+    resolve_language,
+    set_language,
+    translate,
+)
+from .translator import (
+    translate as t,
+)
+
+__all__ = [
+    "DEFAULT_LANGUAGE",
+    "ENV_LANGUAGE",
+    "LANGUAGE_LABELS",
+    "SUPPORTED_LANGUAGES",
+    "SYSTEM_LANGUAGE",
+    "available_languages",
+    "catalog_messages",
+    "clear_missing_keys",
+    "detect_system_language",
+    "get_language",
+    "get_language_label",
+    "initialize_language",
+    "load_catalog",
+    "missing_keys",
+    "normalize_language",
+    "placeholder_indexes",
+    "placeholder_names",
+    "resolve_language",
+    "set_language",
+    "t",
+    "translate",
+]

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""诊断 Ubuntu/Linux 上的音频设备问题.
+"""Diagnose audio device issues on Ubuntu/Linux.
 
-在 Ubuntu 上运行此脚本来查看 sounddevice 如何报告音频设备。
-用法: python scripts/debug_audio_devices.py
+Run this script on Ubuntu to see how sounddevice reports audio devices.
+Usage: python scripts/debug_audio_devices.py
 """
 import sounddevice as sd
 
@@ -10,12 +10,12 @@ print("=" * 60)
 print("sounddevice 版本:", sd.__version__)
 print("=" * 60)
 
-# 默认设备信息
+# Default device information
 print("\n默认设备:")
 print(f"  sd.default.device = {sd.default.device}")
 print(f"  类型: {type(sd.default.device)}")
 
-# 获取所有设备
+# Get all devices
 devices = sd.query_devices()
 print(f"\n共找到 {len(devices)} 个设备:\n")
 

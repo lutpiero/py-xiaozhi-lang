@@ -1,4 +1,4 @@
-"""音乐下载：解析直链；后台 FFmpeg copy 预取到本地缓存."""
+"""for music download: parse direct link; background FFmpeg copy prefetch to local cache."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 import requests
 
+from src.i18n import t
 from src.logging import get_logger
 from src.utils.resource_finder import get_ffmpeg_path
 
@@ -20,7 +21,7 @@ from .cache import MusicCache
 
 logger = get_logger()
 
-# 直链搞不定时，走酷我官方试听
+# cannot be directly connected, I can try the official interface
 _KUWO_PLAYURL = "https://wapi.kuwo.cn/api/v1/www/music/playUrl"
 _QUALITY_FALLBACKS = ("320k", "128k")
 
@@ -30,12 +31,12 @@ _SUBPROCESS_KW = (
 
 
 class MusicDownloader:
-    """解析播放地址；可选后台 copy 整首到缓存（按网速，不跟播放进度走）."""
+    """parses the playback address; optional background copy the entire song to the cache (according to the network speed, does not follow the playback progress)."""
 
     def __init__(self, cache: MusicCache, config: dict[str, Any] | None = None) -> None:
         self._cache = cache
         self._config = config or {}
-        # 上次失败原因，给上层提示用
+        # The reason for the last failure is to prompt the upper layer to use
         self.last_error: str | None = None
         self._prefetch_task: asyncio.Task | None = None
         self._prefetch_song_id: str | None = None
@@ -50,24 +51,24 @@ class MusicDownloader:
         *,
         filename: str | None = None,
     ) -> Path | None:
-        """有缓存直接用，没有再下载."""
+        """is cached and used directly without downloading."""
         self._cache.prepare()
         name = filename or f"{song_id}.mp3"
         hit = self._cache.find_song_file(song_id)
         if hit is not None:
-            logger.info(f"使用缓存: {hit}")
+            logger.info(t('使用缓存: {value1}', value1=hit))
             return hit
 
         cache_path = self._cache.root / name
         if cache_path.exists():
-            logger.info(f"使用缓存: {cache_path}")
+            logger.info(t('使用缓存: {value1}', value1=cache_path))
             return cache_path
 
         return await self.download(api_url, name, song_id=song_id)
 
     @staticmethod
     def _extract_url_from_payload(data: Any) -> str | None:
-        # 各家 JSON 字段不太一样，尽量抠出 url
+        # The JSON fields of each company are different, try to cut out the url
         if not isinstance(data, dict):
             return None
 
@@ -86,34 +87,41 @@ class MusicDownloader:
         return None
 
     @staticmethod
+    def _is_blocked_api_failure(data: Any) -> bool:
+        if not isinstance(data, dict):
+            return False
+        code = data.get("code")
+        msg = str(data.get("msg") or data.get("message") or "").strip()
+        return code == 1 or "禁止批量下载" in msg or "block ip" in msg.lower()
+
+    @staticmethod
     def _describe_api_failure(data: Any) -> str:
         if not isinstance(data, dict):
-            return "直链 API 返回无法解析的数据"
+            return t("直链 API 返回无法解析的数据")
 
         code = data.get("code")
         msg = str(data.get("msg") or data.get("message") or "").strip()
 
-        # lx-music-api 常见 code
+        # lx-music-api Common code
         if code == 1 or "禁止批量下载" in msg or "block ip" in msg.lower():
-            return (
-                "直链 API 已封禁当前 IP（禁止批量下载）。"
-                "可切换网络/IP，或在设置中更换 MUSIC.URL_API"
+            return t(
+                "直链 API 已封禁当前 IP（禁止批量下载）。可切换网络/IP，或在设置中更换 MUSIC.URL_API"
             )
         if code == 5 or "too many" in msg.lower():
-            return "直链 API 请求过于频繁，请稍后再试"
+            return t("直链 API 请求过于频繁，请稍后再试")
         if code == 2:
-            return "直链 API 获取播放地址失败（曲库无源或解析失败）"
+            return t("直链 API 获取播放地址失败（曲库无源或解析失败）")
         if code == 4:
-            return "直链 API 内部错误"
+            return t("直链 API 内部错误")
         if code == 6:
-            return "直链 API 参数错误"
+            return t("直链 API 参数错误")
 
         if msg:
-            return f"直链 API 失败: {msg}"
-        return f"直链 API 未能返回播放 URL: {data}"
+            return t("直链 API 失败: {message}", message=msg)
+        return t("直链 API 未能返回播放 URL: {data}", data=data)
 
     def _lx_headers(self) -> dict[str, str]:
-        # 对齐 Huibq/keep-alive render_api.js：只认 Key + UA
+        # Alignment Huibq/keep-alive render_api.js: Only recognize Key UA
         return {
             "X-Request-Key": self._config.get("URL_API_KEY", "share-v3"),
             "User-Agent": "lx-music-request",
@@ -121,7 +129,7 @@ class MusicDownloader:
         }
 
     def _browser_headers(self) -> dict[str, str]:
-        # 酷我官方 playUrl 用
+        # Kuwo official playUrl uses
         headers = dict(self._config.get("HEADERS") or {})
         headers.setdefault(
             "User-Agent",
@@ -133,7 +141,7 @@ class MusicDownloader:
         return headers
 
     def media_headers(self, media_url: str) -> dict[str, str]:
-        """给 CDN / FFmpeg 流式播放用的请求头（不是 JSON API 那套）."""
+        """is a request header for CDN/FFmpeg streaming playback (not the JSON API set)."""
         host = (urlparse(media_url).hostname or "").lower()
         ua = (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -150,7 +158,7 @@ class MusicDownloader:
             headers["Origin"] = "https://www.kuwo.cn"
         return headers
 
-    # 旧名
+    # The old name
     def _download_headers(self, download_url: str) -> dict[str, str]:
         return self.media_headers(download_url)
 
@@ -165,12 +173,12 @@ class MusicDownloader:
             return response.json()
         except Exception as e:
             logger.warning(
-                f"请求失败 {urlparse(url).netloc}: {e}", exc_info=True
+                t('请求失败 {value1}: {value3}', value1=urlparse(url).netloc, value3=e), exc_info=True
             )
             return None
 
     def _candidate_lx_urls(self, api_url: str) -> list[str]:
-        # 先按配置音质试，再试 128k
+        # First test the sound quality according to the configuration and try again 128k
         urls = [api_url]
         m = re.search(r"/url/[^/]+/[^/]+/([^/?#]+)", api_url)
         if not m:
@@ -194,22 +202,22 @@ class MusicDownloader:
         headers = self._lx_headers()
 
         for candidate in self._candidate_lx_urls(api_url):
-            logger.debug(f"尝试直链 API: {candidate}")
+            logger.debug(t('尝试直链 API: {value1}', value1=candidate))
             data = await self._fetch_json(candidate, headers)
             if data is None:
-                last_reason = "直链 API 网络请求失败"
+                last_reason = t("直链 API 网络请求失败")
                 continue
 
             real_url = self._extract_url_from_payload(data)
             if real_url:
-                logger.info(f"直链 API 解析成功: {real_url[:80]}...")
+                logger.info(t('直链 API 解析成功: {value1}...', value1=real_url[:80]))
                 return real_url, None
 
             last_reason = self._describe_api_failure(data)
-            logger.warning(f"直链 API 未返回 URL: {data}")
+            logger.warning(t('直链 API 未返回 URL: {value1}', value1=data))
 
-            # IP 被封了换音质也没用
-            if "封禁" in (last_reason or "") or "禁止批量下载" in str(data):
+            # IP is blocked and changing the sound quality is useless
+            if self._is_blocked_api_failure(data):
                 break
 
         return None, last_reason
@@ -217,33 +225,33 @@ class MusicDownloader:
     async def _resolve_via_kuwo_official(
         self, song_id: str
     ) -> tuple[str | None, str | None]:
-        # 免费歌能听；付费歌官方会直接说不行
+        # You can listen to free songs; the official will directly say no to paid songs
         if not song_id or song_id == "unknown":
-            return None, "缺少歌曲 ID，无法回退官方接口"
+            return None, t("缺少歌曲 ID，无法回退官方接口")
 
         headers = self._browser_headers()
         last_reason: str | None = None
 
         for br in ("320kmp3", "128kmp3"):
             url = f"{_KUWO_PLAYURL}?mid={song_id}&type=music&httpsStatus=1&br={br}"
-            logger.debug(f"尝试酷我官方 playUrl: mid={song_id} br={br}")
+            logger.debug(t('尝试酷我官方 playUrl: mid={value1} br={value3}', value1=song_id, value3=br))
             data = await self._fetch_json(url, headers)
             if data is None:
-                last_reason = "酷我官方接口网络请求失败"
+                last_reason = t("酷我官方接口网络请求失败")
                 continue
 
             real_url = self._extract_url_from_payload(data)
             if real_url:
-                logger.info(f"酷我官方接口解析成功: {real_url[:80]}...")
+                logger.info(t('酷我官方接口解析成功: {value1}...', value1=real_url[:80]))
                 return real_url, None
 
             msg = ""
             if isinstance(data, dict):
                 msg = str(data.get("msg") or data.get("message") or "").strip()
             if "付费" in msg:
-                last_reason = f"该歌曲为付费内容，官方接口无法试听（{msg}）"
+                last_reason = t("该歌曲为付费内容，官方接口无法试听（{message}）", message=msg)
                 break
-            last_reason = msg or f"酷我官方接口未返回 URL: {data}"
+            last_reason = msg or t("酷我官方接口未返回 URL: {data}", data=data)
             logger.warning(last_reason)
 
         return None, last_reason
@@ -251,7 +259,7 @@ class MusicDownloader:
     async def resolve_play_url(
         self, api_url: str, *, song_id: str | None = None
     ) -> str | None:
-        # 直链 → 降音质 → 官方接口
+        # Direct link → reduce sound quality → When the official interface
         self.last_error = None
         reasons: list[str] = []
 
@@ -262,7 +270,7 @@ class MusicDownloader:
             if reason:
                 reasons.append(reason)
 
-            # 没传 song_id 时从 url 路径里抠
+            # When the song_id is not passed, extract it from the url path
             sid = song_id
             if not sid or sid == "unknown":
                 m = re.search(r"/url/[^/]+/([^/]+)/", api_url)
@@ -276,18 +284,18 @@ class MusicDownloader:
                 if reason:
                     reasons.append(reason)
 
-            self.last_error = "；".join(reasons) if reasons else "未能解析播放地址"
-            logger.error(f"未能解析播放 URL: {self.last_error}")
+            self.last_error = t("；").join(reasons) if reasons else t("未能解析播放地址")
+            logger.error(t('未能解析播放 URL: {value1}', value1=self.last_error))
             return None
         except Exception as e:
-            self.last_error = f"解析播放 URL 异常: {e}"
+            self.last_error = t("解析播放 URL 异常: {error}", error=e)
             logger.error(self.last_error, exc_info=True)
             return None
 
     def _sync_download(
         self, download_url: str, headers: dict, temp_path: Path, cache_path: Path
     ) -> Path:
-        # CDN 偶发 RemoteDisconnected，多试两次
+        # CDN Occasionally RemoteDisconnected, try two more times
         last_err: Exception | None = None
         for attempt in range(3):
             try:
@@ -306,13 +314,13 @@ class MusicDownloader:
                             if chunk:
                                 f.write(chunk)
                 if temp_path.stat().st_size <= 0:
-                    raise IOError("下载文件为空")
+                    raise IOError(t("下载文件为空"))
                 shutil.move(str(temp_path), str(cache_path))
                 return cache_path
             except (requests.RequestException, OSError) as e:
                 last_err = e
                 logger.warning(
-                    f"下载重试 {attempt + 1}/3 失败: {e}"
+                    t('下载重试 {value1}/3 失败: {value3}', value1=attempt + 1, value3=e)
                 )
         assert last_err is not None
         raise last_err
@@ -320,7 +328,7 @@ class MusicDownloader:
     async def download(
         self, api_url: str, filename: str, *, song_id: str | None = None
     ) -> Path | None:
-        """下载并写入缓存目录."""
+        """to download and write to the cache directory."""
         self._cache.prepare()
         temp_path = None
         try:
@@ -332,7 +340,7 @@ class MusicDownloader:
             cache_path = self._cache.root / filename
             headers = self.media_headers(download_url)
             logger.debug(
-                f"开始下载音频: host={urlparse(download_url).hostname}"
+                t('开始下载音频: host={value1}', value1=urlparse(download_url).hostname)
             )
 
             result = await asyncio.to_thread(
@@ -342,16 +350,16 @@ class MusicDownloader:
                 temp_path,
                 cache_path,
             )
-            logger.info(f"音乐下载完成并缓存: {result}")
+            logger.info(t('音乐下载完成并缓存: {value1}', value1=result))
             return result
         except Exception as e:
-            self.last_error = f"下载失败: {e}"
+            self.last_error = t("下载失败: {error}", error=e)
             logger.error(self.last_error, exc_info=True)
             if temp_path and temp_path.exists():
                 try:
                     temp_path.unlink()
                 except Exception as cleanup_e:
-                    logger.debug(f"清理临时文件失败: {cleanup_e}")
+                    logger.debug(t('清理临时文件失败: {value1}', value1=cleanup_e))
             return None
 
     def start_prefetch(
@@ -360,19 +368,19 @@ class MusicDownloader:
         song_id: str,
         headers: Mapping[str, str] | None = None,
     ) -> None:
-        """后台按网速 FFmpeg -c copy 整首落盘，不跟播放进度同步.
+        """The background is based on the network speed FFmpeg -c copy the entire song to disk, not synchronized with the playback progress.
 
-        类似 HTML audio 的缓冲：播的同时尽快把整文件拉完，听完前也可能已缓存好。
-        换歌会取消上一次预取；暂停/停止当前歌不取消（继续缓冲）。
+        , which is similar to HTML audio buffering: the entire file should be pulled out as soon as possible while playing, and it may be cached before listening.
+        Changing songs will cancel the last prefetch; pausing/stopping the current song will not cancel (continue buffering).
         """
         if not song_id or song_id == "unknown":
             return
         self._cache.prepare()
         if self._cache.find_song_file(song_id) is not None:
-            logger.debug(f"已有缓存，跳过预取: {song_id}")
+            logger.debug(t('已有缓存，跳过预取: {value1}', value1=song_id))
             return
 
-        # 同一首歌已在预取
+        # The same song is already being prefetched
         if (
             self._prefetch_task
             and not self._prefetch_task.done()
@@ -387,10 +395,10 @@ class MusicDownloader:
             self._prefetch_copy_loop(media_url, song_id, hdrs),
             name=f"music:prefetch:{song_id}",
         )
-        logger.info(f"后台预取缓存: song_id={song_id}")
+        logger.info(t('后台预取缓存: song_id={value1}', value1=song_id))
 
     def cancel_prefetch(self) -> None:
-        """取消后台预取（换歌时）."""
+        """Cancel background prefetching (when changing songs)."""
         task = self._prefetch_task
         self._prefetch_task = None
         self._prefetch_song_id = None
@@ -413,7 +421,7 @@ class MusicDownloader:
             if not ok:
                 return
             if not part.exists() or part.stat().st_size <= 1024:
-                logger.warning(f"预取文件过小，丢弃: {part.name}")
+                logger.warning(t('预取文件过小，丢弃: {value1}', value1=part.name))
                 if part.exists():
                     part.unlink()
                 return
@@ -421,10 +429,10 @@ class MusicDownloader:
                 final.unlink()
             part.replace(final)
             logger.info(
-                f"后台预取完成（可本地播）: {final.name} ({final.stat().st_size} bytes)"
+                t('后台预取完成（可本地播）: {value1} ({value3} bytes)', value1=final.name, value3=final.stat().st_size)
             )
         except asyncio.CancelledError:
-            logger.debug(f"后台预取取消: {song_id}")
+            logger.debug(t('后台预取取消: {value1}', value1=song_id))
             try:
                 if part.exists():
                     part.unlink()
@@ -432,7 +440,7 @@ class MusicDownloader:
                 pass
             raise
         except Exception as e:
-            logger.warning(f"后台预取失败 {song_id}: {e}", exc_info=True)
+            logger.warning(t('后台预取失败 {value1}: {value3}', value1=song_id, value3=e), exc_info=True)
             try:
                 if part.exists():
                     part.unlink()
@@ -446,7 +454,7 @@ class MusicDownloader:
     async def _ffmpeg_copy_url(
         self, media_url: str, out_path: Path, headers: dict[str, str]
     ) -> bool:
-        """用 FFmpeg -c copy 按网速拉整首，不解码、不跟播放限速."""
+        """Use FFmpeg -c copy to pull the entire song according to the network speed, without decoding or playback speed limit."""
         from src.audio_codecs.music_decoder import _ffmpeg_header_args
 
         ffmpeg = get_ffmpeg_path()
@@ -484,13 +492,13 @@ class MusicDownloader:
             if proc.returncode != 0:
                 err = (stderr or b"").decode("utf-8", errors="ignore").strip()
                 logger.warning(
-                    f"FFmpeg copy 预取失败 rc={proc.returncode}: {err[:300]}"
+                    t('FFmpeg copy 预取失败 rc={value1}: {value3}', value1=proc.returncode, value3=err[:300])
                 )
                 return False
             return True
         except FileNotFoundError:
-            logger.warning("FFmpeg 不可用，后台预取跳过")
+            logger.warning(t("FFmpeg 不可用，后台预取跳过"))
             return False
         except Exception as e:
-            logger.warning(f"FFmpeg copy 预取异常: {e}", exc_info=True)
+            logger.warning(t('FFmpeg copy 预取异常: {value1}', value1=e), exc_info=True)
             return False

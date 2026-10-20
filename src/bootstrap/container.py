@@ -1,8 +1,7 @@
-"""服务容器.
+"""Service Container.
 
-整合核心服务，作为应用的中央协调者；会话/门闩/装配/适配器已拆到子模块。
+Integrates core services as the central coordinator of the application; sessions/latches/assemblies/adapters have been split into submodules.
 """
-
 from src.bootstrap.adapters import PluginCommandsAdapter, PluginContextAdapter
 from src.bootstrap.health import (
     DEGRADED_AUDIO_NOTICE,
@@ -17,6 +16,7 @@ from src.core.protocol_manager import ProtocolManager
 from src.core.resource_pool import ResourcePool
 from src.core.state_manager import StateManager
 from src.core.task_manager import TaskManager
+from src.i18n import t
 from src.logging import get_logger
 from src.plugins.manager import PluginManager
 from src.utils.config_manager import get_config
@@ -25,14 +25,14 @@ logger = get_logger()
 
 
 class ServiceContainer:
-    """服务容器.
+    """Service Container.
 
-    持有核心服务与 ConversationSession，编排 run / shutdown 生命周期。
-    会话操作走 ``self.session``；门闩走 ``health`` 模块。
+    holds the core service and ConversationSession, orchestrating the run / shutdown life cycle.
+    Session operation goes ``self.session``; latch goes ``health`` module.
     """
 
     def __init__(self):
-        logger.debug("初始化 ServiceContainer")
+        logger.debug(t("初始化 ServiceContainer"))
 
         self.config = get_config()
 
@@ -44,16 +44,16 @@ class ServiceContainer:
         self.event_bus = EventBus()
         self.state = StateManager(self.event_bus, aec_enabled=aec_enabled)
         self.tasks = TaskManager()
-        # Protocol 入站任务走 TaskManager，避免 fire-and-forget
+        # Protocol Inbound tasks go to TaskManager to avoid fire-and-forget
         self.protocol = ProtocolManager(self.event_bus, task_manager=self.tasks)
         self.plugins = PluginManager()
         self.resource_pool = ResourcePool()
 
-        # 容器持有的跨插件共享服务（启动时 bind，关闭时 unbind）
+        # The cross-plugin shared service held by the container (bind when starting, unbind when shutting down)
         self.mcp_server = None
         self.music_player = None
 
-        # 会话控制（听/说/打断/TTS 回环）
+        # Session control (listen/speak/interrupt/TTS loopback)
         self.session = ConversationSession(
             state=self.state,
             protocol=self.protocol,
@@ -66,11 +66,11 @@ class ServiceContainer:
 
         self._mode: str = "cli"
         self._shutting_down = False
-        # audio 降级运行（XIAOZHI_DEGRADED_AUDIO=1 且 audio failed）
+        # audio downgrade operation (XIAOZHI_DEGRADED_AUDIO=1 and audio failed)
         self._degraded_audio = False
 
     # -------------------------
-    # 适配器创建
+    # Adapter Creation
     # -------------------------
     def create_plugin_context(self) -> PluginContext:
         if not self._plugin_context:
@@ -83,10 +83,10 @@ class ServiceContainer:
         return self._plugin_commands
 
     # -------------------------
-    # 生命周期
+    # Life Cycle
     # -------------------------
     async def run(self, *, protocol: str = "websocket", mode: str = "gui") -> int:
-        logger.info(f"启动 ServiceContainer, protocol={protocol}, mode={mode}")
+        logger.info(t('启动 ServiceContainer, protocol={value1}, mode={value3}', value1=protocol, value3=mode))
         self._mode = mode
 
         try:
@@ -102,13 +102,13 @@ class ServiceContainer:
             await setup_plugins(self, mode, ctx, cmd)
             await self.plugins.start_all()
 
-            # 关键插件健康门闩：失败则退出，禁止 silent zombie
+            # Key plug-in health latch: exit on failure, disable silent zombie
             health_error = check_critical_plugins(self.plugins)
             if health_error:
                 logger.error(health_error)
                 return 1
 
-            # audio 失败但允许降级：打横幅/日志，继续跑 UI
+            # audio failure but allow downgrade: display banner/log and continue running UI
             if self.plugins.is_failed("audio") and not audio_is_fatal():
                 logger.warning(DEGRADED_AUDIO_NOTICE)
                 self._degraded_audio = True
@@ -117,7 +117,7 @@ class ServiceContainer:
                         Events.SYSTEM_NOTICE, DEGRADED_AUDIO_NOTICE
                     )
                 except Exception as e:
-                    logger.debug(f"降级提示事件失败: {e}", exc_info=True)
+                    logger.debug(t('降级提示事件失败: {value1}', value1=e), exc_info=True)
 
             await self.plugins.notify_device_state_changed(self.state.device_state)
 
@@ -125,31 +125,31 @@ class ServiceContainer:
             return 0
 
         except Exception as e:
-            logger.error(f"应用运行失败: {e}", exc_info=True)
+            logger.error(t('应用运行失败: {value1}', value1=e), exc_info=True)
             return 1
         finally:
             await self.shutdown()
 
     async def shutdown(self) -> None:
-        """关闭应用，统一通过资源池逆序释放所有资源."""
+        """Closes the application and releases all resources uniformly through the resource pool in reverse order."""
         if self._shutting_down:
-            logger.debug("ServiceContainer 已在关闭中，跳过")
+            logger.debug(t("ServiceContainer 已在关闭中，跳过"))
             return
         self._shutting_down = True
-        logger.info("正在关闭 ServiceContainer...")
+        logger.info(t("正在关闭 ServiceContainer..."))
 
         try:
             await self.resource_pool.shutdown()
-            logger.info("ServiceContainer 关闭完成")
+            logger.info(t("ServiceContainer 关闭完成"))
         except Exception as e:
-            logger.error(f"关闭时出错: {e}", exc_info=True)
+            logger.error(t('关闭时出错: {value1}', value1=e), exc_info=True)
         finally:
             if self._mode == "gui":
                 try:
                     from PySide6.QtWidgets import QApplication
 
                     if QApplication.instance():
-                        logger.debug("退出 Qt 应用")
+                        logger.debug(t("退出 Qt 应用"))
                         QApplication.quit()
                 except Exception as e:
-                    logger.debug(f"退出 Qt 应用时出错: {e}")
+                    logger.debug(t('退出 Qt 应用时出错: {value1}', value1=e))

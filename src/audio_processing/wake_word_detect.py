@@ -7,6 +7,7 @@ from typing import Callable, Optional
 import numpy as np
 
 from src.constants.constants import AudioConfig
+from src.i18n import t
 from src.logging import get_logger
 from src.utils.config_manager import ConfigManager, get_config
 from src.utils.resource_finder import get_app_root, get_user_keywords_path
@@ -37,9 +38,9 @@ class WakeWordDetector:
         self._keyword_spotter = None
         self._stream = None
 
-        # 添加锁保护 sherpa-onnx 对象的访问
+        # Add lock to protect access to sherpa-onnx objects
         self._onnx_lock = threading.Lock()
-        self._stopping = False  # 标记是否正在停止
+        self._stopping = False  # Mark whether stopping
 
         self._sample_rate = AudioConfig.INPUT_SAMPLE_RATE
         self._num_threads = 4
@@ -51,44 +52,44 @@ class WakeWordDetector:
 
     async def initialize(self, model_path: Optional[str] = None) -> bool:
         try:
-            # 1. 检查配置是否启用
+            # 1. Check if the configuration is enabled
             config = get_config()
             if not config.get_config("WAKE_WORD_OPTIONS.USE_WAKE_WORD", False):
-                logger.info("唤醒词功能已禁用")
+                logger.info(t("唤醒词功能已禁用"))
                 self.enabled = False
                 return False
 
-            # 2. 加载配置参数
+            # 2. Load the configuration parameters
             self._load_config(config)
 
-            # 3. 确定模型路径
+            # 3. Determine the model path
             if model_path is None:
                 model_path = config.get_config("WAKE_WORD_OPTIONS.MODEL_PATH", "models")
 
             self._model_dir = get_app_root() / model_path
 
             if not self._model_dir.exists():
-                logger.error(f"模型目录不存在: {self._model_dir}")
+                logger.error(t('模型目录不存在: {value1}', value1=self._model_dir))
                 self.enabled = False
                 return False
 
-            # 4. 停止旧检测循环并释放旧模型
+            # 4. Stop the old detection loop and release the old model
             if self._running:
                 await self.stop()
             self._release_model()
 
-            # 5. 加载新模型
+            # 5. Load the new model
             if not self._load_model():
                 self.enabled = False
                 return False
 
             self.enabled = True
             self._model_loaded = True
-            logger.info(f"唤醒词检测器初始化成功: {self._model_dir}")
+            logger.info(t('唤醒词检测器初始化成功: {value1}', value1=self._model_dir))
             return True
 
         except Exception as e:
-            logger.error(f"唤醒词检测器初始化失败: {e}", exc_info=True)
+            logger.error(t('唤醒词检测器初始化失败: {value1}', value1=e), exc_info=True)
             self.enabled = False
             return False
 
@@ -102,14 +103,14 @@ class WakeWordDetector:
 
         # Validate
         if not 0.1 <= self._keywords_threshold <= 1.0:
-            logger.warning(f"关键词阈值 {self._keywords_threshold} 超出范围，重置为0.25")
+            logger.warning(t('关键词阈值 {value1} 超出范围，重置为0.25', value1=self._keywords_threshold))
             self._keywords_threshold = 0.25
 
         if not 0.1 <= self._keywords_score <= 10.0:
-            logger.warning(f"关键词分数 {self._keywords_score} 超出范围，重置为2.0")
+            logger.warning(t('关键词分数 {value1} 超出范围，重置为2.0', value1=self._keywords_score))
             self._keywords_score = 2.0
 
-        logger.debug(f"KWS配置: 阈值={self._keywords_threshold}, 分数={self._keywords_score}")
+        logger.debug(t('KWS配置: 阈值={value1}, 分数={value3}', value1=self._keywords_threshold, value3=self._keywords_score))
 
     def _load_model(self) -> bool:
         """Load sherpa-onnx KeywordSpotter model."""
@@ -127,15 +128,15 @@ class WakeWordDetector:
             required_files = [encoder_path, decoder_path, joiner_path, tokens_path, keywords_path]
             for file_path in required_files:
                 if not file_path.exists():
-                    logger.error(f"模型文件不存在: {file_path}")
+                    logger.error(t('模型文件不存在: {value1}', value1=file_path))
                     return False
 
-            # Windows: sherpa-onnx C++ 用 std::ifstream(narrow_char*) 读取 tokens.txt，
-            # 路径含非 ASCII 字符时 GBK 代码页会吞掉反斜杠导致打开失败。
-            # 将 tokens.txt 复制到 ASCII 安全路径的用户目录下。
+            # Windows: sherpa-onnx C uses std::ifstream(narrow_char*) to read tokens.txt,
+            # When the path contains non-ASCII characters, the GBK code page will swallow backslashes and cause the opening to fail.
+            # Copy tokens.txt to the user directory of the ASCII safe path.
             tokens_path = self._ensure_ascii_path(tokens_path, lang)
 
-            logger.info(f"加载 KeywordSpotter 模型: {self._model_dir}")
+            logger.info(t('加载 KeywordSpotter 模型: {value1}', value1=self._model_dir))
 
             with self._onnx_lock:
                 self._keyword_spotter = sherpa_onnx.KeywordSpotter(
@@ -154,14 +155,14 @@ class WakeWordDetector:
                     provider=self._provider,
                 )
 
-            logger.info("KeywordSpotter 模型加载成功")
+            logger.info(t("KeywordSpotter 模型加载成功"))
             return True
 
         except ImportError as e:
-            logger.error(f"sherpa_onnx 导入失败: {e}", exc_info=True)
+            logger.error(t('sherpa_onnx 导入失败: {value1}', value1=e), exc_info=True)
             return False
         except Exception as e:
-            logger.error(f"加载模型失败: {e}", exc_info=True)
+            logger.error(t('加载模型失败: {value1}', value1=e), exc_info=True)
             return False
 
     @staticmethod
@@ -185,7 +186,7 @@ class WakeWordDetector:
         safe_dir = get_user_keywords_path(lang).parent
         safe_path = safe_dir / file_path.name
         shutil.copy2(file_path, safe_path)
-        logger.debug(f"已复制 {file_path.name} 到 ASCII 安全路径: {safe_path}")
+        logger.debug(t('已复制 {value1} 到 ASCII 安全路径: {value3}', value1=file_path.name, value3=safe_path))
         return safe_path
 
     def _release_model(self):
@@ -198,9 +199,9 @@ class WakeWordDetector:
                 self._keyword_spotter = None
                 self._stream = None
 
-                # 必须先释放 spotter，再释放 stream。
-                # KeywordSpotter 在 C++ 层拥有 stream 的所有权，
-                # 反序释放会导致 spotter 析构时 double free stream。
+                # must first release the spotter and then release the stream.
+                # KeywordSpotter in C The layer has ownership of the stream,
+                # reverse release will cause double free stream when spotter is destroyed.
                 if spotter is not None:
                     del spotter
 
@@ -208,10 +209,10 @@ class WakeWordDetector:
                     del stream
 
                 self._model_loaded = False
-                logger.debug("模型资源已释放")
+                logger.debug(t("模型资源已释放"))
 
             except Exception as e:
-                logger.debug(f"释放模型资源时出错: {e}")
+                logger.debug(t('释放模型资源时出错: {value1}', value1=e))
 
     def on_detected(self, callback: Callable):
         self.on_detected_callback = callback
@@ -232,15 +233,15 @@ class WakeWordDetector:
             except (asyncio.QueueEmpty, asyncio.QueueFull):
                 pass
         except Exception as e:
-            logger.debug(f"音频数据入队失败: {type(e).__name__}: {e}")
+            logger.debug(t('音频数据入队失败: {value1}: {value3}', value1=type(e).__name__, value3=e))
 
     async def start(self, audio_codec) -> bool:
         if not self.enabled:
-            logger.warning("唤醒词功能未启用")
+            logger.warning(t("唤醒词功能未启用"))
             return False
 
         if not self._keyword_spotter:
-            logger.error("模型未加载，请先调用 initialize()")
+            logger.error(t("模型未加载，请先调用 initialize()"))
             return False
 
         try:
@@ -260,11 +261,11 @@ class WakeWordDetector:
             # Start detection task
             self._detection_task = asyncio.create_task(self._detection_loop())
 
-            logger.info("唤醒词检测器已启动")
+            logger.info(t("唤醒词检测器已启动"))
             return True
 
         except Exception as e:
-            logger.error(f"启动检测器失败: {e}", exc_info=True)
+            logger.error(t('启动检测器失败: {value1}', value1=e), exc_info=True)
             return False
 
     async def stop(self):
@@ -276,7 +277,7 @@ class WakeWordDetector:
             self.audio_codec.remove_audio_listener(self)
             self.audio_codec = None
 
-        # 用哨兵唤醒阻塞在 queue.get() 上的检测循环
+        # Use sentry to wake up the detection loop blocked on queue.get()
         if self._audio_queue:
             try:
                 self._audio_queue.put_nowait(_STOP_SENTINEL)
@@ -287,7 +288,7 @@ class WakeWordDetector:
                 except (asyncio.QueueEmpty, asyncio.QueueFull):
                     pass
 
-        # 等待检测循环自然退出（由哨兵触发）
+        # Wait for the detection loop to exit naturally (triggered by sentinel)
         if self._detection_task:
             try:
                 await asyncio.wait_for(self._detection_task, timeout=1.0)
@@ -309,13 +310,13 @@ class WakeWordDetector:
             self._audio_queue = None
 
         self._stopping = False
-        logger.info("唤醒词检测器已停止")
+        logger.info(t("唤醒词检测器已停止"))
 
     async def reload(self, model_path: Optional[str] = None) -> bool:
         was_running = self._running
         codec = self.audio_codec
 
-        logger.info(f"热重载唤醒词模型: {model_path}")
+        logger.info(t('热重载唤醒词模型: {value1}', value1=model_path))
 
         # Re-initialize with new model
         if not await self.initialize(model_path):
@@ -332,7 +333,7 @@ class WakeWordDetector:
         await self.stop()
         self._release_model()
         self.enabled = False
-        logger.info("唤醒词检测器已关闭")
+        logger.info(t("唤醒词检测器已关闭"))
 
     def pause(self):
         """Pause detection (keeps model loaded)."""
@@ -362,16 +363,16 @@ class WakeWordDetector:
                 if "no running event loop" in str(e) or "Event loop is closed" in str(e):
                     break
                 error_count += 1
-                logger.error(f"检测循环错误 ({error_count}/{MAX_ERRORS}): {e}", exc_info=True)
+                logger.error(t('检测循环错误 ({value1}/{value3}): {value5}', value1=error_count, value3=MAX_ERRORS, value5=e), exc_info=True)
 
                 if error_count >= MAX_ERRORS:
-                    logger.critical("达到最大错误次数，停止检测")
+                    logger.critical(t("达到最大错误次数，停止检测"))
                     break
 
                 await asyncio.sleep(1)
             except Exception as e:
                 error_count += 1
-                logger.error(f"检测循环错误 ({error_count}/{MAX_ERRORS}): {e}", exc_info=True)
+                logger.error(t('检测循环错误 ({value1}/{value3}): {value5}', value1=error_count, value3=MAX_ERRORS, value5=e), exc_info=True)
 
                 if self.on_error:
                     try:
@@ -380,10 +381,10 @@ class WakeWordDetector:
                         else:
                             self.on_error(e)
                     except Exception as cb_error:
-                        logger.error(f"错误回调失败: {cb_error}")
+                        logger.error(t('错误回调失败: {value1}', value1=cb_error))
 
                 if error_count >= MAX_ERRORS:
-                    logger.critical("达到最大错误次数，停止检测")
+                    logger.critical(t("达到最大错误次数，停止检测"))
                     break
 
                 await asyncio.sleep(1)
@@ -422,7 +423,7 @@ class WakeWordDetector:
                         detected_result = result
                         self._keyword_spotter.reset_stream(self._stream)
             except Exception as e:
-                logger.debug(f"处理音频时出错: {e}")
+                logger.debug(t('处理音频时出错: {value1}', value1=e))
 
         if detected_result is not None:
             await self._handle_detection(detected_result)
@@ -435,7 +436,7 @@ class WakeWordDetector:
 
         self._last_detection_time = current_time
 
-        # 短暂暂停检测，让打断流程完成，避免旧音频触发重复检测
+        # Shortly pause the detection to let the interrupt process complete to avoid repeated detection triggered by old audio
         self._paused = True
         try:
             if self.on_detected_callback:
@@ -445,15 +446,15 @@ class WakeWordDetector:
                     else:
                         self.on_detected_callback(result, result)
                 except Exception as e:
-                    logger.error(f"唤醒词回调执行失败: {e}", exc_info=True)
+                    logger.error(t('唤醒词回调执行失败: {value1}', value1=e), exc_info=True)
         finally:
-            # 快速退出：正在停止时跳过延迟和队列清理
+            # Quick exit: skip delay and queue cleanup when stopping
             if self._stopping:
                 self._paused = False
                 return
-            # 延迟后恢复检测（等待 abort + clear_audio_queue 完成）
+            # Resume detection after delay (waiting for abort clear_audio_queue to complete)
             await asyncio.sleep(0.3)
-            # 排空队列中残留的旧音频帧
+            # Drain old audio frames remaining in the queue
             if self._audio_queue:
                 while True:
                     try:

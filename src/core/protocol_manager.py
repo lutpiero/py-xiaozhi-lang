@@ -1,14 +1,14 @@
-"""协议管理器.
+"""Protocol manager.
 
-封装通信协议操作，通过事件总线转发消息。
-音频数据走直连通道（有界队列 + 单 consumer），避免 per-frame create_task 堆积。
+to encapsulate communication protocol operations and forward messages through the event bus.
+Audio data goes through the direct channel (bounded queue single consumer) to avoid per-frame create_task stack.
 """
-
 import asyncio
 from typing import TYPE_CHECKING, Awaitable, Callable, Optional
 
 from src.constants.constants import ListeningMode
 from src.core.event_bus import EventBus, Events
+from src.i18n import t
 from src.logging import get_logger
 
 if TYPE_CHECKING:
@@ -17,15 +17,15 @@ if TYPE_CHECKING:
 
 logger = get_logger()
 
-# 音频回调类型
+# Audio callback type
 AudioCallback = Callable[[bytes], Awaitable[None]]
 
-# 入站音频有界队列：满时丢弃最旧帧，防止 event loop 被任务淹没
+# Inbound audio bounded queue: discard the oldest frame when full to prevent the event loop from being flooded with tasks
 _INCOMING_AUDIO_QUEUE_SIZE = 64
 
 
 class ProtocolTransport:
-    """负责协议创建与连接管理."""
+    """is responsible for protocol creation and connection management."""
 
     def __init__(
         self,
@@ -38,7 +38,7 @@ class ProtocolTransport:
         self._connect_lock = asyncio.Lock()
         self._incoming_audio_handler: Optional[AudioCallback] = None
 
-        # 有界音频队列 + 单 consumer（替代 per-packet create_task）
+        # Bounded audio queue Single consumer (replaces per-packet create_task)
         self._audio_queue: asyncio.Queue[Optional[bytes]] = asyncio.Queue(
             maxsize=_INCOMING_AUDIO_QUEUE_SIZE
         )
@@ -46,7 +46,7 @@ class ProtocolTransport:
         self._audio_consumer_running = False
 
     def set_task_manager(self, task_manager: "TaskManager") -> None:
-        """注入 TaskManager（容器初始化后可再绑定）."""
+        """Injection TaskManager (can be bound after the container is initialized)."""
         self._task_manager = task_manager
 
     @property
@@ -54,7 +54,7 @@ class ProtocolTransport:
         return self._protocol
 
     def set_protocol(self, protocol_type: str) -> None:
-        logger.debug(f"设置协议类型: {protocol_type}")
+        logger.debug(t('设置协议类型: {value1}', value1=protocol_type))
 
         if protocol_type == "mqtt":
             from src.protocols.mqtt_protocol import MqttProtocol
@@ -83,11 +83,11 @@ class ProtocolTransport:
         self._protocol.on_audio_channel_closed(self._on_audio_channel_closed)
 
     def _spawn(self, coro: Awaitable, name: str) -> None:
-        """优先走 TaskManager；否则本地 create_task 并记录异常."""
+        """and takes priority in TaskManager; otherwise local create_task and records exceptions."""
         if self._task_manager is not None:
             task = self._task_manager.spawn(coro, name=name)
             if task is None:
-                # 关闭中：关闭未调度协程避免警告
+                # Closing: close unscheduled coroutines to avoid warnings
                 if asyncio.iscoroutine(coro):
                     coro.close()
             return
@@ -100,16 +100,16 @@ class ProtocolTransport:
                     return
                 exc = t.exception()
                 if exc:
-                    logger.error(f"任务 {name} 异常结束: {exc}", exc_info=exc)
+                    logger.error(t('任务 {value1} 异常结束: {value3}', value1=name, value3=exc), exc_info=exc)
 
             task.add_done_callback(_on_done)
         except Exception as e:
-            logger.error(f"创建任务失败 {name}: {e}", exc_info=True)
+            logger.error(t('创建任务失败 {value1}: {value3}', value1=name, value3=e), exc_info=True)
             if asyncio.iscoroutine(coro):
                 coro.close()
 
     def _ensure_audio_consumer(self) -> None:
-        """确保入站音频 consumer 在运行（幂等）."""
+        """ensures inbound audio consumer Running (idempotent)."""
         if self._audio_consumer_running:
             return
         try:
@@ -136,20 +136,20 @@ class ProtocolTransport:
             self._audio_consumer_task = None
             if t.cancelled():
                 return
-            # TaskManager.spawn 已记录异常；本地 create_task 时补日志
+            # TaskManager.spawn has recorded exceptions; local create_task time-replenishing logs
             if self._task_manager is None:
                 exc = t.exception()
                 if exc:
-                    logger.error(f"音频 consumer 异常结束: {exc}", exc_info=exc)
+                    logger.error(t('音频 consumer 异常结束: {value1}', value1=exc), exc_info=exc)
 
         self._audio_consumer_task.add_done_callback(_on_done)
 
     async def _audio_consumer_loop(self) -> None:
-        """单消费者串行处理入站音频，避免 per-frame 任务爆炸."""
+        """Single consumer processes inbound audio serially, avoiding per-frame Task explosion."""
         while True:
             data = await self._audio_queue.get()
             if data is None:
-                # 毒丸：退出
+                # Poison pill: Exit
                 return
             try:
                 if self._incoming_audio_handler:
@@ -157,17 +157,17 @@ class ProtocolTransport:
                 else:
                     await self._event_bus.emit(Events.INCOMING_AUDIO, data)
             except Exception as e:
-                logger.error(f"处理入站音频失败: {e}", exc_info=True)
+                logger.error(t('处理入站音频失败: {value1}', value1=e), exc_info=True)
 
     def _enqueue_audio(self, data: bytes) -> None:
-        """有界入队：满则丢最旧帧再放入最新帧."""
+        """Bounded enqueue: If full, discard the oldest frame and put the latest frame."""
         try:
             self._audio_queue.put_nowait(data)
             return
         except asyncio.QueueFull:
             pass
 
-        # 丢弃最旧
+        # discards the oldest
         try:
             self._audio_queue.get_nowait()
         except asyncio.QueueEmpty:
@@ -175,15 +175,15 @@ class ProtocolTransport:
         try:
             self._audio_queue.put_nowait(data)
         except asyncio.QueueFull:
-            logger.warning("入站音频队列仍满，丢弃当前帧")
+            logger.warning(t("入站音频队列仍满，丢弃当前帧"))
 
     async def _stop_audio_consumer(self) -> None:
-        """停止 consumer 并清空队列."""
+        """Stop consumer and clear the queue."""
         if self._audio_consumer_task and not self._audio_consumer_task.done():
             try:
                 self._audio_queue.put_nowait(None)
             except asyncio.QueueFull:
-                # 队列满时强制腾一个位置放毒丸
+                # Forces a position to be released when the queue is full
                 try:
                     self._audio_queue.get_nowait()
                 except asyncio.QueueEmpty:
@@ -198,12 +198,12 @@ class ProtocolTransport:
             except asyncio.CancelledError:
                 pass
             except Exception as e:
-                logger.debug(f"等待音频 consumer 退出时异常: {e}")
+                logger.debug(t('等待音频 consumer 退出时异常: {value1}', value1=e))
 
         self._audio_consumer_task = None
         self._audio_consumer_running = False
 
-        # 清空残留
+        # Clear the residue
         while not self._audio_queue.empty():
             try:
                 self._audio_queue.get_nowait()
@@ -212,7 +212,7 @@ class ProtocolTransport:
 
     async def _on_network_error(self, error_message: str = None) -> None:
         if error_message:
-            logger.error(f"网络错误: {error_message}")
+            logger.error(t('网络错误: {value1}', value1=error_message))
         await self._event_bus.emit(Events.NETWORK_ERROR, error_message)
 
     def _on_incoming_json(self, json_data: dict) -> None:
@@ -226,15 +226,15 @@ class ProtocolTransport:
             self._ensure_audio_consumer()
             self._enqueue_audio(data)
         except Exception as exc:
-            logger.warning(f"分发音频数据失败: {exc}", exc_info=True)
+            logger.warning(t('分发音频数据失败: {value1}', value1=exc), exc_info=True)
 
     async def _on_audio_channel_opened(self) -> None:
-        logger.info("协议通道已打开")
+        logger.info(t("协议通道已打开"))
         await self._event_bus.emit(Events.AUDIO_CHANNEL_OPENED)
         await self._event_bus.emit(Events.PROTOCOL_CONNECTED, self._protocol)
 
     async def _on_audio_channel_closed(self) -> None:
-        logger.info("协议通道已关闭")
+        logger.info(t("协议通道已关闭"))
         await self._event_bus.emit(Events.AUDIO_CHANNEL_CLOSED)
         await self._event_bus.emit(Events.PROTOCOL_DISCONNECTED)
 
@@ -242,7 +242,7 @@ class ProtocolTransport:
         try:
             return bool(self._protocol and self._protocol.is_audio_channel_opened())
         except Exception:
-            logger.debug("检查音频通道状态时发生异常", exc_info=True)
+            logger.debug(t("检查音频通道状态时发生异常"), exc_info=True)
             return False
 
     async def connect(self, timeout: float = 12.0) -> bool:
@@ -250,7 +250,7 @@ class ProtocolTransport:
             return True
 
         if not self._protocol:
-            logger.error("协议未初始化")
+            logger.error(t("协议未初始化"))
             return False
 
         async with self._connect_lock:
@@ -263,17 +263,17 @@ class ProtocolTransport:
                     timeout=timeout,
                 )
                 if not opened:
-                    logger.error("协议连接失败")
+                    logger.error(t("协议连接失败"))
                     return False
 
-                logger.info("协议连接已建立")
+                logger.info(t("协议连接已建立"))
                 return True
 
             except asyncio.TimeoutError:
-                logger.error("协议连接超时")
+                logger.error(t("协议连接超时"))
                 return False
             except Exception as e:
-                logger.error(f"协议连接异常: {e}", exc_info=True)
+                logger.error(t('协议连接异常: {value1}', value1=e), exc_info=True)
                 return False
 
     async def disconnect(self) -> None:
@@ -281,12 +281,12 @@ class ProtocolTransport:
             try:
                 await self._protocol.close_audio_channel()
             except Exception as e:
-                logger.error(f"关闭协议失败: {e}", exc_info=True)
+                logger.error(t('关闭协议失败: {value1}', value1=e), exc_info=True)
         await self._stop_audio_consumer()
 
 
 class ProtocolGateway:
-    """负责消息发送的网关."""
+    """is the gateway responsible for message sending."""
 
     def __init__(self, transport: ProtocolTransport):
         self._transport = transport
@@ -296,7 +296,7 @@ class ProtocolGateway:
         if protocol and self._transport.is_audio_channel_opened():
             await protocol.send_audio(data)
         else:
-            logger.debug("音频通道未打开，跳过发送音频数据")
+            logger.debug(t("音频通道未打开，跳过发送音频数据"))
 
     async def send_text(self, text: str) -> None:
         protocol = self._transport.protocol
@@ -308,14 +308,14 @@ class ProtocolGateway:
         if protocol and self._transport.is_audio_channel_opened():
             await protocol.send_start_listening(mode)
         else:
-            logger.warning("音频通道未打开，跳过 send_start_listening")
+            logger.warning(t("音频通道未打开，跳过 send_start_listening"))
 
     async def send_stop_listening(self) -> None:
         protocol = self._transport.protocol
         if protocol and self._transport.is_audio_channel_opened():
             await protocol.send_stop_listening()
         else:
-            logger.debug("音频通道未打开，跳过 send_stop_listening")
+            logger.debug(t("音频通道未打开，跳过 send_stop_listening"))
 
     async def send_abort_speaking(self, reason: str = None) -> None:
         protocol = self._transport.protocol
@@ -327,7 +327,7 @@ class ProtocolGateway:
         if protocol and self._transport.is_audio_channel_opened():
             await protocol.send_wake_word_detected(wake_word)
         else:
-            logger.warning("音频通道未打开，跳过 send_wake_word_detected")
+            logger.warning(t("音频通道未打开，跳过 send_wake_word_detected"))
 
     async def send_iot_descriptors(self, descriptors) -> None:
         protocol = self._transport.protocol
@@ -346,7 +346,7 @@ class ProtocolGateway:
 
 
 class ProtocolManager:
-    """对外暴露统一接口，内部组合 Transport + Gateway."""
+    """exposes a unified interface to the outside, and internally combines Transport Gateway."""
 
     def __init__(
         self,

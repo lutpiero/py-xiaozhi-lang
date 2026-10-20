@@ -1,6 +1,6 @@
-"""接口协议定义.
+"""Interface protocol definition.
 
-定义插件、窗口与核心服务之间的契约，实现松耦合。
+Define the contract between plug-ins, windows and core services to achieve loose coupling.
 """
 
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Protocol
@@ -10,171 +10,171 @@ if TYPE_CHECKING:
 
 
 class PluginContext(Protocol):
-    """插件可访问的只读上下文.
+    """Read-only context accessible by the plug-in.
 
-    插件通过此接口获取应用状态，但不能直接修改状态。
+    plug-in obtains the application status through this interface, but cannot modify the status directly. Whether
     """
 
     def get_device_state(self) -> "DeviceState":
         """
-        获取当前设备状态.
+        Gets the current device status.
         """
         ...
 
     def get_listening_mode(self) -> "ListeningMode":
         """
-        获取当前监听模式.
+        Gets the current listening mode.
         """
         ...
 
     def is_listening(self) -> bool:
         """
-        是否正在监听.
+        is listening.
         """
         ...
 
     def is_speaking(self) -> bool:
         """
-        是否正在说话.
+        is talking.
         """
         ...
 
     def is_idle(self) -> bool:
         """
-        是否处于空闲状态.
+        is in idle state.
         """
         ...
 
     def is_audio_channel_opened(self) -> bool:
         """
-        音频通道是否已打开.
+        Whether the audio channel is open.
         """
         ...
 
     def should_capture_audio(self) -> bool:
         """
-        是否应该采集音频.
+        should collect audio.
         """
         ...
 
     def is_keep_listening(self) -> bool:
         """
-        是否保持持续监听.
+        maintains continuous monitoring.
         """
         ...
 
     def get_config(self) -> Any:
         """
-        获取配置管理器.
+        Gets the configuration manager.
         """
         ...
 
 
 class PluginCommands(Protocol):
-    """插件可执行的命令.
+    """Commands executable by the plug-in.
 
-    插件通过此接口执行操作，由核心服务实现具体逻辑。
+    plug-in performs operations through this interface, and the core service implements the specific logic. The
     """
 
     async def start_listening(self, mode: "ListeningMode") -> None:
         """
-        开始监听.
+        Start listening.
         """
         ...
 
     async def stop_listening(self) -> None:
         """
-        停止监听.
+        Stop listening.
         """
         ...
 
     async def abort_speaking(self, reason: str) -> None:
         """
-        中止语音输出.
+        Abort speech output.
         """
         ...
 
     async def send_audio(self, data: bytes) -> None:
         """
-        发送音频数据.
+        Send audio data.
         """
         ...
 
     async def send_text(self, text: str) -> None:
         """
-        发送文本消息.
+        Send text message.
         """
         ...
 
     async def send_wake_word_detected(self, text: str) -> None:
         """
-        发送检测到的文本（唤醒词或用户输入）.
+        Send detected text (wake word or user input).
         """
         ...
 
     async def send_mcp_message(self, payload: str) -> None:
         """
-        发送 MCP 消息（会自动包装格式）.
+        Send MCP Message (will automatically wrap the format).
         """
         ...
 
     async def connect_protocol(self) -> bool:
         """
-        连接协议通道.
+        Connection protocol channel.
         """
         ...
 
     def spawn(self, coro: Awaitable[Any], name: str) -> Any:
         """
-        创建异步任务.
+        Create asynchronous task.
         """
         ...
 
     def schedule_command_nowait(self, fn: Callable, *args, **kwargs) -> None:
         """
-        调度命令（非阻塞）.
+        Scheduling command (non-blocking).
         """
         ...
 
     def request_shutdown(self) -> None:
         """
-        请求关闭应用.
+        Requests to close the application.
         """
         ...
 
 
 class EventHandler(Protocol):
     """
-    事件处理器协议.
+    Event handler protocol.
     """
 
     async def __call__(self, data: Any = None) -> None:
         """
-        处理事件.
+        Handle events.
         """
         ...
 
 
 class EventBusProtocol(Protocol):
-    """事件总线协议.
+    """Event bus protocol.
 
-    用于组件间解耦通信。
+    is used for decoupled communication between components.
     """
 
     def on(self, event: str, handler: Callable[..., Awaitable[None]]) -> None:
         """
-        注册事件处理器.
+        registers event handlers.
         """
         ...
 
     def off(self, event: str, handler: Callable[..., Awaitable[None]]) -> None:
         """
-        移除事件处理器.
+        Removes the event handler.
         """
         ...
 
     async def emit(self, event: str, data: Any = None) -> None:
         """
-        触发事件.
+        Triggers the event.
         """
         ...

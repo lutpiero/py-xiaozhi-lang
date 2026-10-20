@@ -1,4 +1,4 @@
-"""验证风险修复：插件失败隔离、TaskManager 堆栈、协议有界音频队列."""
+"""Validation risk fixes: plugin failure isolation, TaskManager stack, protocol bounded audio queue."""
 
 import asyncio
 import copy
@@ -110,7 +110,7 @@ async def test_event_bus_isolates_handler_errors(caplog):
 
     assert seen == ["ok"]
     assert any("handler boom" in r.getMessage() for r in caplog.records)
-    # 应带异常信息（exc_info 填充）
+    # should bring exception information (exc_info filled)
     assert any(r.exc_info is not None for r in caplog.records)
 
 
@@ -127,11 +127,11 @@ async def test_task_manager_logs_exception_with_traceback(caplog):
         assert task is not None
         with pytest.raises(RuntimeError):
             await task
-        # done callback 异步触发，让出一点
+        # done callback that is triggered asynchronously, leaving some
         await asyncio.sleep(0)
 
     assert any("unit:boom" in r.getMessage() for r in caplog.records)
-    # 关键：exc_info 必须绑定到任务异常，而非空 context
+    # Key: exc_info must be bound to task exception, not empty context
     logged = [r for r in caplog.records if "unit:boom" in r.getMessage()]
     assert logged
     assert logged[0].exc_info is not None
@@ -146,27 +146,27 @@ async def test_protocol_audio_queue_uses_single_consumer_not_per_frame_tasks():
 
     async def handler(data: bytes):
         received.append(data)
-        await asyncio.sleep(0)  # 让出，模拟慢消费
+        await asyncio.sleep(0)  # Give way to simulate slow consumption
 
     transport.set_audio_handler(handler)
-    # 注入大量帧：不得创建与帧数等量的 pending tasks
+    # Inject a large number of frames: No pending tasks equal to the number of frames must be created
     n = _INCOMING_AUDIO_QUEUE_SIZE + 20
     for i in range(n):
         transport._on_incoming_audio(bytes([i % 256]))
 
-    # 等待 consumer 排空（有界队列会丢旧帧，最终 received 有上限）
+    # and waits for the consumer to empty (the bounded queue will lose old frames, and there is an upper limit for the final received)
     for _ in range(50):
         if transport._audio_queue.empty() and len(received) > 0:
-            # 再等一轮处理
+            # Wait for another round of processing
             await asyncio.sleep(0.01)
             if transport._audio_queue.empty():
                 break
         await asyncio.sleep(0.01)
 
     assert len(received) > 0
-    # 队列容量限制：处理数量应不超过 n，且远小于「若 per-frame create_task 会同时挂起 n 个」
+    # Queue capacity limit: The number of processes should not exceed n, and be much smaller than "if per-frame create_task will hang n at the same time "
     assert len(received) <= n
-    # consumer 仅一条
+    # consumer has only one
     assert transport._audio_consumer_task is not None
 
     await transport.disconnect()
@@ -187,7 +187,7 @@ async def test_protocol_json_spawns_via_task_manager():
     bus.on(Events.INCOMING_JSON, on_json)
     transport._on_incoming_json({"type": "hello"})
 
-    # 等待 spawn 的任务
+    # Waiting for spawn tasks
     for _ in range(30):
         if got:
             break
@@ -208,7 +208,7 @@ async def test_plugin_mark_failed_skips_notify_only_for_failed():
 
 
 def test_constants_import_has_no_config_manager_side_effect(monkeypatch):
-    """import constants 不应在模块级拉起配置 IO."""
+    """import constants that should not pull up configuration IO at the module level."""
     import importlib
     import sys
 
@@ -246,7 +246,7 @@ def test_music_player_detach_clears_runtime_bindings():
 
 
 def test_music_tools_register_with_injected_player():
-    """音乐工具闭包持有注入的 MusicPlayer，无 get_music_player_instance."""
+    """music tool closure holds the injected MusicPlayer, no get_music_player_instance."""
     from src.mcp.mcp_server import McpServer
     from src.mcp.tools.music import register_music_tools
     from src.mcp.tools.music.music_player import MusicPlayer
@@ -259,7 +259,7 @@ def test_music_tools_register_with_injected_player():
     assert "music_player.search_and_play" in names
     assert "music_player.stop" in names
 
-    # 源码层：不再导出全局 get/bind
+    # Source code layer: No longer export the global The get/bind
     import src.mcp.tools.music as music_pkg
     import src.mcp.tools.music.music_player as mp_mod
 
@@ -269,13 +269,13 @@ def test_music_tools_register_with_injected_player():
 
 
 def test_volume_tools_register_without_module_singleton():
-    """音量工具闭包持有注入的 controller，无模块级 _volume_controller."""
+    """Volume tool closure holds injected controller, no module level _volume_controller."""
     from src.mcp.mcp_server import McpServer
     from src.mcp.tools.volume import register_volume_tools
     import src.mcp.tools.volume.register as vol_tools
 
     server = McpServer()
-    # 注入假 controller，避免依赖系统音量 API
+    # Inject a fake controller to avoid relying on the system volume API
     fake = type(
         "FakeVol",
         (),
@@ -296,7 +296,7 @@ def test_volume_tools_register_without_module_singleton():
 
 
 def test_app_and_weather_register_not_decorator_discovery():
-    """app / weather 经 register_* 挂载；生产路径无装饰器全局表."""
+    """app/weather is mounted via register_*; the production path has no decorator global table."""
     from src.mcp.mcp_server import McpServer
     from src.mcp.tools.app import register_app_tools
     from src.mcp.tools.weather import register_weather_tools
@@ -310,7 +310,7 @@ def test_app_and_weather_register_not_decorator_discovery():
     assert "get_weather" in names
     assert "get_forecast" in names
 
-    # add_common_tools 一次装齐
+    # add_common_tools directly
     server2 = McpServer()
     server2.add_common_tools(music_player=None)
     names2 = {t.name for t in server2.tools}
@@ -318,7 +318,7 @@ def test_app_and_weather_register_not_decorator_discovery():
     assert "get_weather" in names2
     assert "self.audio_speaker.set_volume" in names2
 
-    # 装饰器模块已移除
+    # The decorator module has been removed
     import importlib.util
 
     assert (
@@ -354,7 +354,7 @@ def test_mcp_plugin_requires_injected_services():
 
 
 def test_ui_plugin_uses_view_facade_not_main_model():
-    """UIPlugin 不直接碰 main_model."""
+    """UIPlugin Do not touch main_model."""
     import inspect
 
     from src.plugins import ui as ui_mod
@@ -415,7 +415,7 @@ async def test_cli_view_manager_uses_task_manager_for_emit():
 
 @pytest.mark.asyncio
 async def test_music_player_tick_lyrics_in_playback_path():
-    """歌词由主循环 _tick_lyrics 驱动，无独立 lyrics task."""
+    """The lyrics are driven by the main loop _tick_lyrics and have no independent lyrics task."""
     from src.mcp.tools.music.music_player import MusicPlayer
 
     player = MusicPlayer()
@@ -438,7 +438,7 @@ async def test_music_player_tick_lyrics_in_playback_path():
     assert eng.current_lyric_index == 0
     assert emitted and "hello" in emitted[0]
 
-    # 节流：立即再 tick 不应重复
+    # Throttling: immediately tick again It should not be repeated
     n = len(emitted)
     await player._tick_lyrics()
     assert len(emitted) == n
@@ -449,7 +449,7 @@ def test_lyric_at_pure_function():
 
     lyrics = [(0.0, "a"), (5.0, "b"), (10.0, "c")]
     assert lyric_at(lyrics, 0.0)[1] == "a"
-    # 算法 lead=0.5：在 5.6 时进入 b 句
+    # Algorithm lead=0.5: Entering sentence b at 5.6
     assert lyric_at(lyrics, 5.6)[1] == "b"
     assert lyric_at(lyrics, 99.0)[1] == "c"
     assert lyric_at([], 1.0) is None
@@ -480,12 +480,12 @@ def test_gui_activation_no_ensure_future_or_get_event_loop():
 
 
 def test_config_manager_batch_update_single_save(tmp_path, monkeypatch):
-    """批量 update_configs 只落盘一次."""
+    """Batch update_configs only download once."""
     from src.utils.config_manager import get_config, initialize_config, reset_config
 
     reset_config()
     cm = initialize_config()
-    # 指向临时文件，避免污染用户配置
+    # points to a temporary file to avoid polluting the user configuration
     cm.config_dir = tmp_path
     cm.config_file = tmp_path / "config.json"
     cm._config = {
@@ -519,7 +519,7 @@ def test_config_manager_batch_update_single_save(tmp_path, monkeypatch):
     assert cm.get_config("SYSTEM_OPTIONS.NETWORK.WEBSOCKET_URL") == "wss://example"
     assert get_config() is cm
 
-    # 单次 update 仍会 save
+    # Single update will still save
     cm.update_config("SYSTEM_OPTIONS.NETWORK.WEBSOCKET_ACCESS_TOKEN", "tok2")
     assert saves["n"] == 2
 
@@ -527,7 +527,7 @@ def test_config_manager_batch_update_single_save(tmp_path, monkeypatch):
 
 
 def test_config_manager_update_through_none_intermediate(tmp_path):
-    """中间节点为 null 时仍可点分写入（如 MQTT_INFO: null）."""
+    """When the intermediate node is null, it can still be written in points (such as MQTT_INFO: null)."""
     from src.utils.config_manager import ConfigManager, reset_config
 
     reset_config()
@@ -553,7 +553,7 @@ def test_config_manager_update_through_none_intermediate(tmp_path):
 
 
 def test_config_manager_no_default_config_pollution():
-    """实例更新不得污染类级 DEFAULT_CONFIG 嵌套对象."""
+    """Instance updates must not pollute class-level DEFAULT_CONFIG nested objects."""
     from src.utils.config_manager import ConfigManager, reset_config
 
     reset_config()
@@ -570,7 +570,7 @@ def test_config_manager_no_default_config_pollution():
 
 
 def test_config_manager_corrupt_file_backed_up(tmp_path, monkeypatch):
-    """损坏的 config.json 应备份后回退默认，且不污染 DEFAULT_CONFIG."""
+    """The damaged config.json should be backed up and returned to the default, and does not pollute DEFAULT_CONFIG."""
     from src.utils import config_manager as cm_mod
     from src.utils.config_manager import ConfigManager, reset_config
 
@@ -581,7 +581,7 @@ def test_config_manager_corrupt_file_backed_up(tmp_path, monkeypatch):
     bad.write_text("{ not json", encoding="utf-8")
 
     monkeypatch.setattr(cm_mod, "get_user_data_dir", lambda: tmp_path)
-    # 避免从安装目录再拷一份
+    # Avoid copying another copy from the installation directory
     monkeypatch.setattr(
         cm_mod, "get_config_dir", lambda: tmp_path / "no-install-config"
     )
@@ -597,7 +597,7 @@ def test_config_manager_corrupt_file_backed_up(tmp_path, monkeypatch):
     backups = list(cfg_dir.glob("config.json.corrupt-*"))
     assert len(backups) == 1
     assert backups[0].read_text(encoding="utf-8") == "{ not json"
-    # 已写入可用默认
+    # has been written and available default
     assert cm.config_file.exists()
     loaded = json.loads(cm.config_file.read_text(encoding="utf-8"))
     assert isinstance(loaded, dict)
@@ -617,7 +617,7 @@ def test_config_manager_default_includes_music_and_window_mode():
 
 
 def test_efuse_create_is_flat(tmp_path, monkeypatch):
-    """新建 efuse.json 仅平铺四字段，无 device_fingerprint."""
+    """New efuse.json Only tiles four fields, no device_fingerprint."""
     from src.activation.identity import DeviceIdentity
 
     idn = DeviceIdentity()
@@ -645,7 +645,7 @@ def test_efuse_create_is_flat(tmp_path, monkeypatch):
 
 
 def test_efuse_strips_legacy_device_fingerprint(tmp_path):
-    """旧嵌套 device_fingerprint 在 ensure 时剥离并回写."""
+    """Old nested device_fingerprint stripped and written back on ensure."""
     import json
     from src.activation.identity import DeviceIdentity
 
@@ -670,7 +670,7 @@ def test_efuse_strips_legacy_device_fingerprint(tmp_path):
     )
     idn = DeviceIdentity()
     idn._efuse_file = path
-    # 不依赖真实网卡：validate 用传入 fingerprint 只补缺字段
+    # does not rely on the real network card: validate uses the incoming fingerprint Only fill in the missing fields
     fp = {
         "system": "Darwin",
         "hostname": "h",
@@ -717,7 +717,7 @@ def test_efuse_save_never_writes_extra_keys(tmp_path):
 
 
 def test_mcp_tools_disabled_filters_list_and_call_gate():
-    """MCP_TOOLS.DISABLED 从 list 排除且 call 拒绝."""
+    """MCP_TOOLS.DISABLED is excluded from the list and call Rejected."""
     import asyncio
     from src.mcp.mcp_server import McpServer
     from src.mcp.tooling import McpTool, PropertyList
@@ -743,7 +743,7 @@ def test_mcp_tool_catalog_groups():
 
     clear_builtin_catalog_cache()
     rows = builtin_catalog_rows()
-    # 分组 = tools/<pkg> 目录名（扫描 register.py，非写死名单）
+    # Group = tools/<pkg> directory name (scan register.py, not hard-coded list)
     by_name = {r["name"]: r for r in rows}
     assert "music_player.seek" in by_name
     assert by_name["music_player.seek"]["group"] == "music"
@@ -753,14 +753,14 @@ def test_mcp_tool_catalog_groups():
     assert by_name["take_photo"]["group"] == "camera"
     assert by_name["take_screenshot"]["group"] == "screenshot"
     assert by_name["get_weather"]["groupLabel"] == "weather"
-    # 无包上下文时的纯名字启发式
+    # Pure name heuristic when there is no package context
     assert tool_group("music_player.seek") == "music_player"
     assert tool_group("self.application.launch") == "self.application"
     assert normalize_disabled(["", " a ", "a"]) == ["a"]
 
 
 def test_music_player_init_is_lazy():
-    """MusicPlayer 构造不应立刻扫缓存目录或读满配置副作用路径."""
+    """MusicPlayer construction should not immediately scan the cache directory or read the full configuration side effect path."""
     from src.mcp.tools.music.music_player import MusicPlayer
     from src.utils.config_manager import initialize_config, reset_config
 
@@ -779,7 +779,7 @@ def test_music_player_init_is_lazy():
 
 
 def test_viewport_protocol_and_cli_slots():
-    """CLI 对话和音乐两行互不影响."""
+    """CLI dialogue and music lines do not affect each other."""
     from src.core.event_bus import EventBus
     from src.ui.cli.manager import CliViewManager
     from src.ui.shared.viewport import ViewPort
@@ -828,7 +828,7 @@ def test_create_viewport_cli_factory():
 
 
 def test_deprecated_ui_events_removed():
-    """旧的 UI_UPDATE_* / UI_TOGGLE_MODE 已删掉."""
+    """Old UI_UPDATE_* / UI_TOGGLE_MODE Deleted."""
     from src.core.event_bus import Events
 
     for name in (
@@ -881,7 +881,7 @@ class _FakeViewport:
 
 @pytest.mark.asyncio
 async def test_ui_plugin_routes_music_to_music_line():
-    """音乐走 music 行，不盖对话."""
+    """Music goes to the music line, not covering dialogue."""
     from src.mcp.tools.music.events import MusicLyricsData, MusicStateData
     from src.plugins.ui import UIPlugin
 
@@ -906,7 +906,7 @@ async def test_ui_plugin_routes_music_to_music_line():
 
 @pytest.mark.asyncio
 async def test_session_actions_owns_auto_mode():
-    """模式由 Session 改，界面只跟着 set_auto_mode."""
+    """The mode is changed from Session, and the interface only follows set_auto_mode."""
     from src.plugins.ui_presenter import UiPresenter
     from src.plugins.ui_session import SessionActions
 
@@ -959,7 +959,7 @@ async def test_session_actions_owns_auto_mode():
 
 @pytest.mark.asyncio
 async def test_auto_session_button_start_stop():
-    """自动模式主按钮会在开始/停止之间切换."""
+    """Auto mode main button will toggle between start/stop."""
     from src.plugins.ui_presenter import UiPresenter
     from src.plugins.ui_session import SessionActions
 
@@ -1018,7 +1018,7 @@ async def test_auto_session_button_start_stop():
 
 @pytest.mark.asyncio
 async def test_send_text_from_idle_starts_listen_then_detect():
-    """空闲发文本要先 listen 再 detect."""
+    """When you are free to send text, you must first listen and then detect."""
     from src.constants.constants import ListeningMode
     from src.plugins.ui_presenter import UiPresenter
     from src.plugins.ui_session import SessionActions
@@ -1056,13 +1056,13 @@ async def test_send_text_from_idle_starts_listen_then_detect():
             return C()
 
     session = SessionActions(_Ctx(), _Cmd(), UiPresenter(_FakeViewport()))
-    # 手动模式空闲发文本
+    # Manual mode idle text sending
     await session.send_text("播放歌曲")
     assert order[0] == "connect"
     assert order[1] == ("listen", ListeningMode.MANUAL)
     assert order[2] == ("detect", "播放歌曲")
 
-    # 已在 listening 时不再重复 start
+    # has been listened to and will not be repeated. start
     order.clear()
     await session.send_text("你好")
     assert order == [("detect", "你好")]
@@ -1070,7 +1070,7 @@ async def test_send_text_from_idle_starts_listen_then_detect():
 
 @pytest.mark.asyncio
 async def test_abort_speaking_resumes_keep_listening():
-    """持续监听时打断后回到 listening."""
+    """Return after interruption when continuous monitoring listening."""
     from src.bootstrap.session import ConversationSession
     from src.constants.constants import DeviceState, ListeningMode
 
@@ -1115,7 +1115,7 @@ async def test_abort_speaking_resumes_keep_listening():
 
 
 def test_device_state_handler_does_not_block_with_sleep():
-    """进 LISTENING 不能在状态回调里 sleep."""
+    """Enter LISTENING Cannot be in the status callback sleep."""
     import inspect
 
     from src.bootstrap.session import ConversationSession
@@ -1123,10 +1123,10 @@ def test_device_state_handler_does_not_block_with_sleep():
     src = inspect.getsource(ConversationSession._on_device_state_changed)
     assert "asyncio.sleep" not in src
     assert "await " not in src or "notify_device_state_changed" in src
-    # 不得再 await 人为延迟
+    # must no longer await the artificial delay
     assert "await asyncio" not in src
     src_stop = inspect.getsource(ConversationSession._handle_tts_stop)
-    # 先续听再改状态：send_start_listening 应出现在 set_device_state 之前
+    # Continue listening before changing state: send_start_listening should appear before set_device_state
     assert src_stop.index("send_start_listening") < src_stop.index(
         "set_device_state(DeviceState.LISTENING)"
     )
@@ -1134,7 +1134,7 @@ def test_device_state_handler_does_not_block_with_sleep():
 
 @pytest.mark.asyncio
 async def test_handle_tts_stop_relisten_before_state():
-    """AUTO_STOP：TTS 停了先发 listen 再改状态."""
+    """AUTO_STOP: TTS stops sending listen first and then changing the status."""
     from src.bootstrap.session import ConversationSession
     from src.constants.constants import DeviceState, ListeningMode
 
@@ -1157,7 +1157,7 @@ async def test_handle_tts_stop_relisten_before_state():
             return self._state == DeviceState.LISTENING
 
         async def set_device_state(self, state):
-            # 模拟慢插件：若 listen 在这之后发就会踩延迟
+            # Simulate slow plug-in: If listen is sent after this, it will step on the delay
             order.append(("state", state))
             self._state = state
 
@@ -1226,7 +1226,7 @@ async def test_handle_tts_stop_realtime_skips_relisten():
 
 
 # ---------------------------------------------------------------------------
-# 2026-07-22 polish：exc_info 债外的架构/冒烟
+# 2026-07-22 polish: exc_info debt-free structure/smoke
 # ---------------------------------------------------------------------------
 
 
@@ -1247,7 +1247,7 @@ async def test_event_bus_warns_on_unknown_event_name(caplog):
 
 @pytest.mark.asyncio
 async def test_music_player_receives_codec_via_event_bus():
-    """Audio 发布 AUDIO_CODEC_CHANGED → Music 订阅；无 set_audio_codec 直连."""
+    """Audio publish AUDIO_CODEC_CHANGED → Music subscription; no set_audio_codec Direct connection."""
     from src.mcp.tools.music.music_player import MusicPlayer
 
     bus = EventBus()
@@ -1279,8 +1279,8 @@ def test_music_player_has_no_set_audio_codec_api():
     from src.mcp.tools.music.music_player import MusicPlayer
 
     assert not hasattr(MusicPlayer, "set_audio_codec")
-    assert MusicPlayer.__init__.__code__.co_argcount == 1  # 仅 self
-    # 状态挂在 engine；门面只暴露少量只读属性
+    assert MusicPlayer.__init__.__code__.co_argcount == 1  # only self
+    # status is hung in the engine; the facade only exposes a small number of read-only attributes
     assert isinstance(MusicPlayer.is_playing, property)
     assert MusicPlayer.is_playing.fset is None
 
@@ -1317,11 +1317,11 @@ def test_check_critical_plugins_audio_degraded(monkeypatch):
     assert "ui" in err
     assert "audio" in err
 
-    # 仅 audio 失败 + degraded → 不门闩
+    # Only audio failed degraded → No latch
     monkeypatch.setenv("XIAOZHI_DEGRADED_AUDIO", "1")
     assert check_critical_plugins(FakePlugins({"audio"})) is None
 
-    # 仅 audio 失败 + 默认 → 门闩
+    # only audio fails Default → latch
     monkeypatch.delenv("XIAOZHI_DEGRADED_AUDIO", raising=False)
     err = check_critical_plugins(FakePlugins({"audio"}))
     assert err is not None and "audio" in err
@@ -1330,7 +1330,7 @@ def test_check_critical_plugins_audio_degraded(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_cli_mock_protocol_smoke_session():
-    """CLI 级冒烟：mock 协议 → 有界音频 + JSON → 状态机事件，无需真网/真麦."""
+    """CLI level smoke: mock protocol → bounded audio JSON → state machine event, no need for real network/real wheat."""
     from src.core.task_manager import TaskManager
     from src.protocols.protocol import Protocol
 
@@ -1385,13 +1385,13 @@ async def test_cli_mock_protocol_smoke_session():
     assert await transport.connect(timeout=1.0) is True
     assert mock.is_audio_channel_opened()
 
-    # 模拟服务端 JSON + 多帧音频（有界队列 + 单 consumer）
+    # Simulate server-side JSON multi-frame audio (bounded queue single consumer)
     transport._on_incoming_json({"type": "tts", "state": "start", "text": "你好"})
     for i in range(20):
         transport._on_incoming_audio(bytes([i % 256]))
     transport._on_incoming_json({"type": "tts", "state": "stop"})
 
-    # 等 TaskManager / consumer 处理完
+    # , etc. TaskManager / consumer has finished processing
     await asyncio.sleep(0.15)
 
     assert any(m.get("type") == "tts" for m in received_json)
@@ -1402,10 +1402,10 @@ async def test_cli_mock_protocol_smoke_session():
 
 
 def test_settings_run_worker_emits_test_complete_on_exception():
-    """后台任务异常必须 testComplete，避免设置页一直转圈."""
+    """Background task exceptions must testComplete to avoid the settings page spinning all the time."""
     from src.ui.gui.models.settings_model import SettingsModel
 
-    # 不走完整 __init__（会碰 ConfigManager / 文件）；绑定 _run_worker 到简易桩
+    # does not complete the __init__ (will touch ConfigManager / file); bind _run_worker to the simple stub
     completed: list = []
     messages: list = []
 
@@ -1447,7 +1447,7 @@ def test_settings_run_worker_emits_test_complete_on_exception():
 
 
 def test_no_config_or_logging_get_instance_api():
-    """配置/日志不再暴露 get_instance 懒单例."""
+    """Configuration/log is no longer exposed get_instance lazy singleton."""
     from src.utils import config_manager as cm
     from src.logging import log_config as lc
     import src.logging as logging_pkg
@@ -1462,12 +1462,12 @@ def test_no_config_or_logging_get_instance_api():
     assert "LoggingConfigManager" not in logging_pkg.__all__
 
 # ---------------------------------------------------------------------------
-# MCP 外挂插件加载器
+# MCP plug-in loader
 # ---------------------------------------------------------------------------
 
 
 def test_mcp_plugin_loader_loads_package_and_respects_disabled(tmp_path):
-    """胖插件目录：register(host) 成功；DISABLED_IDS 不加载."""
+    """Fat plug-in directory: register(host) successful; DISABLED_IDS Not loading."""
     from src.mcp.mcp_server import McpServer
     from src.mcp.plugins.host import McpHost
     from src.mcp.plugins.loader import PluginLoader
@@ -1517,7 +1517,7 @@ def test_mcp_plugin_loader_loads_package_and_respects_disabled(tmp_path):
 
 
 def test_mcp_plugin_loader_vendored_lib(tmp_path):
-    """lib/ 下模块可被插件 import（模拟自带依赖）."""
+    """lib/ can be imported by plug-ins (simulating its own dependencies)."""
     from src.mcp.mcp_server import McpServer
     from src.mcp.plugins.host import McpHost
     from src.mcp.plugins.loader import PluginLoader
@@ -1579,7 +1579,7 @@ def test_mcp_plugin_simple_py_file(tmp_path):
 
 
 def test_mcp_server_unload_plugin(tmp_path):
-    """运行时按 plugin_id 卸载外挂工具."""
+    """Press plugin_id to uninstall the plug-in tool when running."""
     from src.mcp.mcp_server import McpServer
     from src.mcp.plugins.host import McpHost
     from src.mcp.plugins.loader import PluginLoader
@@ -1650,7 +1650,7 @@ def test_check_mcp_plugin_script(tmp_path):
 
 
 def test_path_override_and_migrate(tmp_path, monkeypatch):
-    """自定义 CACHE 目录时从旧目录复制文件."""
+    """Copy files from old directory when customizing CACHE directory."""
     import src.utils.resource_finder as rf
 
     # reset overrides
@@ -1700,7 +1700,7 @@ def test_env_cache_dir_overrides_config(tmp_path, monkeypatch):
 
 
 def test_config_version_migration_v1(tmp_path, monkeypatch):
-    """无 CONFIG_VERSION 的旧配置加载后升到 v1 并写回."""
+    """No CONFIG_VERSION After the old configuration is loaded, it is upgraded to v1 and written back."""
     from src.utils import config_manager as cm_mod
     from src.utils.config_manager import ConfigManager, reset_config
 
@@ -1708,7 +1708,7 @@ def test_config_version_migration_v1(tmp_path, monkeypatch):
     cfg_dir = tmp_path / "config"
     cfg_dir.mkdir()
     cfg_file = cfg_dir / "config.json"
-    # 旧文件：无版本、MQTT subscribe_topic 字符串 null
+    # Old file: no version, MQTT subscribe_topic string null
     cfg_file.write_text(
         json.dumps(
             {
@@ -1730,17 +1730,17 @@ def test_config_version_migration_v1(tmp_path, monkeypatch):
     mqtt = cm.get_config("SYSTEM_OPTIONS.NETWORK.MQTT_INFO")
     assert isinstance(mqtt, dict)
     assert mqtt.get("subscribe_topic") is None
-    # 已写回
+    # has been written back
     disk = json.loads(cfg_file.read_text(encoding="utf-8"))
     assert disk.get("CONFIG_VERSION") == ConfigManager.CONFIG_VERSION
     reset_config()
 
 
 def test_settings_model_save_is_atomic(tmp_path, monkeypatch):
-    """SettingsModel.save 使用 tmp+replace."""
+    """SettingsModel.save Use tmp replace."""
     import src.ui.gui.models.settings_model as sm_mod
 
-    # 避免真实 get_config 依赖
+    # Avoid real get_config dependency
     class FakeCM:
         def reload_config(self, **kwargs):
             return True
@@ -1757,7 +1757,7 @@ def test_settings_model_save_is_atomic(tmp_path, monkeypatch):
     model._config = {"CONFIG_VERSION": 1, "MCP_TOOLS": {"DISABLED": ["a.b"]}}
     model._config_path = cfg
     model._mcp_disabled_snapshot = []
-    # save 会 emit Qt signals；无 QApp 时可能仍可用
+    # save will emit Qt signals; it may still be available without QApp
     try:
         from PySide6.QtWidgets import QApplication
         import sys
@@ -1797,8 +1797,8 @@ def test_set_path_overrides_clear_with_none(tmp_path):
     d.mkdir()
     rf.set_path_overrides(cache=d)
     assert rf.get_user_cache_dir() == d.resolve()
-    rf.set_path_overrides(cache=None)  # 显式清除
-    # 无 env 时回到默认 user_data/cache（非 d）
+    rf.set_path_overrides(cache=None)  # Explicitly cleared
+    # Returns to the default user_data/cache (not d) when no env is used
     assert rf.get_user_cache_dir() != d.resolve()
     rf.clear_path_overrides(all=True)
     rf.clear_path_caches()
@@ -1845,7 +1845,7 @@ def test_discover_plugin_catalog_from_sources(tmp_path, monkeypatch):
 
 
 def test_mcp_plugin_subprocess_runtime(tmp_path):
-    """python-subprocess：独立进程加载并代理调用."""
+    """python-subprocess: independent process loading and proxy call."""
     import asyncio
     import json
     from src.mcp.mcp_server import McpServer

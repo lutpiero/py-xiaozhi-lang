@@ -1,18 +1,18 @@
-"""外挂插件子进程 worker：与宿主通过 stdin/stdout 行分隔 JSON 通信.
+"""Plug-in subprocess worker: JSON separated from the host by stdin/stdout lines Communication.
 
-协议（每行一个 JSON 对象）::
+Protocol (one JSON object per line)::
 
     → {"id":1,"method":"bootstrap","params":{...}}
     ← {"id":1,"result":{"tools":[{"name","description","properties":[...]}]}}
 
     → {"id":2,"method":"call","params":{"name":"...","arguments":{...}}}
-    ← {"id":2,"result":{"value": ...}}  # value 为工具原始返回（bool/int/str 等）
+    ← {"id":2,"result":{"value": ...}}
     ← {"id":2,"error":{"message":"..."}}
 
     → {"id":3,"method":"shutdown","params":{}}
     ← {"id":3,"result":{"ok":true}}
 
-capabilities：仅支持只读快照（config_readonly 字典）；logger 在子进程本地创建。
+capabilities: only supports read-only snapshots (config_readonly dictionary); the logger is created locally in the child process.
 """
 
 from __future__ import annotations
@@ -27,6 +27,8 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from src.i18n import t
+
 
 def _log(msg: str) -> None:
     sys.stderr.write(f"[mcp-plugin-worker] {msg}\n")
@@ -34,7 +36,7 @@ def _log(msg: str) -> None:
 
 
 class _WorkerHost:
-    """子进程内给 register(host) 用的最小 Host（与 McpHost 表面兼容）."""
+    """The minimum Host used for register(host) in the child process (superficially compatible with McpHost)."""
 
     def __init__(
         self,
@@ -67,7 +69,7 @@ class _WorkerHost:
         return self._capabilities.get(name)
 
     def add_tool(self, tool: Any) -> None:
-        """接受 McpTool 或具备 name/description/properties/callback 的对象."""
+        """Accepts McpTool or has An object of name/description/properties/callback."""
         name = tool.name
         desc = getattr(tool, "description", "") or ""
         props_obj = getattr(tool, "properties", None)
@@ -99,7 +101,7 @@ class _WorkerHost:
         props: Sequence[Any] | None = None,
     ):
         def decorator(func: Callable):
-            # 延迟导入 tooling，路径已在 bootstrap 里设好
+            # Delayed import tooling, the path has been set in bootstrap
             from src.mcp.plugins.host import _to_property_list
             from src.mcp.tooling import McpTool
 
@@ -129,7 +131,7 @@ def _import_entry(plugin_root: Path, module_part: str, attr_part: str):
     if py_file.is_file():
         spec = importlib.util.spec_from_file_location(unique, py_file)
         if spec is None or spec.loader is None:
-            raise RuntimeError(f"无法加载 {py_file}")
+            raise RuntimeError(t('无法加载 {value1}', value1=py_file))
         mod = importlib.util.module_from_spec(spec)
         sys.modules[unique] = mod
         spec.loader.exec_module(mod)
@@ -137,7 +139,7 @@ def _import_entry(plugin_root: Path, module_part: str, attr_part: str):
         mod = importlib.import_module(module_part)
     fn = getattr(mod, attr_part, None)
     if not callable(fn):
-        raise RuntimeError(f"入口 {module_part}:{attr_part} 不可调用")
+        raise RuntimeError(t('入口 {value1}:{value3} 不可调用', value1=module_part, value3=attr_part))
     return fn
 
 
@@ -183,7 +185,7 @@ def main() -> int:
         try:
             msg = _read_msg()
         except Exception as e:
-            _log(f"读消息失败: {e}")
+            _log(t('读消息失败: {value1}', value1=e))
             return 1
         if msg is None:
             break
@@ -200,14 +202,14 @@ def main() -> int:
                 platform_tag = str(params.get("platform_tag") or "")
                 allow_get = params.get("allow_get") or ["config_readonly", "logger"]
                 capabilities = params.get("capabilities") or {}
-                # 宿主工程根（含 src/）供 import src.mcp.*
+                # Host project root (including src/) for import src.mcp.*
                 app_root = params.get("app_root")
                 if app_root and app_root not in sys.path:
                     sys.path.insert(0, app_root)
 
                 _setup_sys_path(plugin_root, platform_tag)
                 if ":" not in entry:
-                    raise RuntimeError(f"entry 无效: {entry}")
+                    raise RuntimeError(t('entry 无效: {value1}', value1=entry))
                 module_part, attr_part = entry.split(":", 1)
                 register_fn = _import_entry(plugin_root, module_part, attr_part)
 
@@ -223,11 +225,11 @@ def main() -> int:
 
             elif method == "call":
                 if host is None:
-                    raise RuntimeError("worker 未 bootstrap")
+                    raise RuntimeError(t("worker 未 bootstrap"))
                 name = params.get("name")
                 arguments = params.get("arguments") or {}
                 value = loop.run_until_complete(host.call_tool(name, arguments))
-                # 保证 JSON 可序列化
+                # Guarantees JSON serializability
                 if isinstance(value, (bool, int, float, str)) or value is None:
                     out_val = value
                 else:
@@ -239,7 +241,7 @@ def main() -> int:
                 break
 
             else:
-                raise RuntimeError(f"未知 method: {method}")
+                raise RuntimeError(t('未知 method: {value1}', value1=method))
 
         except Exception as e:
             _log(traceback.format_exc())

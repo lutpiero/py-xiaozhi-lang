@@ -1,4 +1,4 @@
-// 自定义标题栏 - 平台自适应
+// Customized title bar - platform adaptive
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
@@ -7,27 +7,27 @@ Rectangle {
     id: root
 
     height: Theme.titleBarHeight
-    color: Theme.backgroundSecondary  // 添加背景色
+    color: Theme.backgroundSecondary  // Add background color
 
     property string title: ""
     property bool showMinimize: true
-    property bool showMaximize: false  // 默认不显示最大化
+    property bool showMaximize: false  // Do not display maximized by default
     property bool showClose: true
 
     signal minimizeClicked()
     signal maximizeClicked()
     signal closeClicked()
 
-    // 拖拽区域
+    // Drag area
     MouseArea {
         id: dragArea
         anchors.fill: parent
-        // macOS: 左边留空给按钮，Windows/Linux: 右边留空给按钮
+        // macOS: Leave space on the left for the button, Windows/Linux: Leave space on the right for the button
         anchors.leftMargin: Theme.titleButtonsOnLeft ? (macButtons.width + Theme.spacingLg) : 0
         anchors.rightMargin: Theme.titleButtonsOnLeft ? 0 : (winButtons.width + Theme.spacingMd)
 
         onPressed: {
-            // 使用系统原生拖拽 API，兼容所有平台（包括 Linux Wayland）
+            // uses the system's native drag API and is compatible with all platforms (including Linux Wayland)
             let win = Window.window
             if (win) {
                 win.startSystemMove()
@@ -37,7 +37,7 @@ Rectangle {
         onDoubleClicked: {
             let win = Window.window
             if (win) {
-                // macOS: 双击进入全屏，Windows/Linux: 双击最大化
+                // macOS: Double-click to enter full screen, Windows/Linux: Double-click to maximize
                 if (Theme.titleButtonsOnLeft) {
                     if (win.visibility === Window.FullScreen) {
                         win.showNormal()
@@ -55,7 +55,7 @@ Rectangle {
         }
     }
 
-    // ========== macOS 风格按钮 (左侧) ==========
+    // ========== macOS style button (left) ==========
     MacTitleBarButtons {
         id: macButtons
         visible: Theme.titleButtonsOnLeft
@@ -67,7 +67,7 @@ Rectangle {
         onCloseClicked: root.closeClicked()
         onMinimizeClicked: root.minimizeClicked()
         onMaximizeClicked: {
-            // macOS: 绿色按钮进入全屏模式
+            // macOS: The green button enters full-screen mode
             let win = Window.window
             if (win) {
                 if (win.visibility === Window.FullScreen) {
@@ -79,7 +79,7 @@ Rectangle {
         }
     }
 
-    // 标题文字 - macOS 时居中，Windows 时左对齐
+    // Title text - centered on macOS, left-aligned on Windows
     Text {
         anchors.centerIn: Theme.titleButtonsOnLeft ? parent : undefined
         anchors.left: Theme.titleButtonsOnLeft ? undefined : parent.left
@@ -92,7 +92,7 @@ Rectangle {
         color: Theme.textPrimary
     }
 
-    // ========== Windows/Linux 风格按钮 (右侧) ==========
+    // ========== Windows/Linux style button (right) ==========
     Row {
         id: winButtons
         visible: !Theme.titleButtonsOnLeft
@@ -101,7 +101,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         spacing: Theme.spacingXs
 
-        // 最小化按钮
+        // Minimize button
         Rectangle {
             visible: root.showMinimize
             width: 32
@@ -124,7 +124,7 @@ Rectangle {
             }
         }
 
-        // 最大化按钮
+        // Maximize button
         Rectangle {
             visible: root.showMaximize
             width: 32
@@ -147,7 +147,7 @@ Rectangle {
             }
         }
 
-        // 关闭按钮
+        // Close button
         Rectangle {
             visible: root.showClose
             width: 32

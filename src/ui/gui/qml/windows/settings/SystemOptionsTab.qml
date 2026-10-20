@@ -1,4 +1,4 @@
-// 系统选项设置页
+// System option setting page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,28 +13,28 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
-            text: "系统选项"
+            text: i18n.t("系统选项")
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
 
-        // 基本信息区域
+        // Basic information area
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
-            // 区域标题
+            // Area title
             Text {
-                text: "基本信息"
+                text: i18n.t("基本信息")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
             }
 
-            // 表单项
+            // Form item
             GridLayout {
                 Layout.fillWidth: true
                 columns: 2
@@ -42,7 +42,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "客户端 ID"
+                    text: i18n.t("客户端 ID")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -52,7 +52,7 @@ ScrollView {
                     Layout.fillWidth: true
                     text: settingsModel ? settingsModel.clientId : ""
                     onEditingFinished: if (settingsModel) settingsModel.clientId = text
-                    placeholderText: "自动生成"
+                    placeholderText: i18n.t("自动生成")
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -62,7 +62,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "设备 ID"
+                    text: i18n.t("设备 ID")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -72,7 +72,7 @@ ScrollView {
                     Layout.fillWidth: true
                     text: settingsModel ? settingsModel.deviceId : ""
                     onEditingFinished: if (settingsModel) settingsModel.deviceId = text
-                    placeholderText: "自动生成"
+                    placeholderText: i18n.t("自动生成")
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -81,23 +81,52 @@ ScrollView {
                     }
                 }
 
+                Text {
+                    text: i18n.t("界面语言")
+                    font.pixelSize: Theme.fontSizeSm
+                    color: Theme.textSecondary
+                    Layout.preferredWidth: 100
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    XComboBox {
+                        id: languageCombo
+                        Layout.fillWidth: true
+                        property var languageCodes: ["auto", "zh_CN", "en_US"]
+                        model: [i18n.t("跟随系统"), i18n.t("简体中文"), "English"]
+                        currentIndex: settingsModel ? Math.max(0, languageCodes.indexOf(settingsModel.language)) : 0
+                        onActivated: function(index) {
+                            if (settingsModel) settingsModel.language = languageCodes[index]
+                        }
+                        font.pixelSize: Theme.fontSizeSm
+                    }
+                    Text {
+                        text: i18n.t("修改后重启生效；也可用 --lang 或 XIAOZHI_LANG 覆盖")
+                        font.pixelSize: Theme.fontSizeXs
+                        color: Theme.textPlaceholder
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                    }
+                }
+
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 回声消除区域
+        // Echo cancellation area
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "回声消除"
+                text: i18n.t("回声消除")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -110,7 +139,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "启用"
+                    text: i18n.t("启用")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -122,7 +151,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "音乐并行播放"
+                    text: i18n.t("音乐并行播放")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -136,7 +165,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "延迟补偿帧数"
+                    text: i18n.t("延迟补偿帧数")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -154,7 +183,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "噪声抑制预处理"
+                    text: i18n.t("噪声抑制预处理")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -170,27 +199,27 @@ ScrollView {
 
             Text {
                 Layout.fillWidth: true
-                text: "消除本应用 TTS/音乐的回声，启用后进入实时对话模式；音乐并行=TTS 播放时音乐闪避不暂停；延迟补偿=40ms+N×协议帧长，蓝牙设备可适当调大。修改后重启生效。"
+                text: i18n.t("消除本应用 TTS/音乐的回声，启用后进入实时对话模式；音乐并行=TTS 播放时音乐闪避不暂停；延迟补偿=40ms+N×协议帧长，蓝牙设备可适当调大。修改后重启生效。")
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textSecondary
                 wrapMode: Text.WordWrap
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 网络配置区域
+        // Network configuration area
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "网络配置"
+                text: i18n.t("网络配置")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -223,7 +252,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "访问令牌"
+                    text: i18n.t("访问令牌")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -237,7 +266,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "OTA 版本 URL"
+                    text: i18n.t("OTA 版本 URL")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -256,7 +285,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "授权 URL"
+                    text: i18n.t("授权 URL")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -275,7 +304,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "激活版本"
+                    text: i18n.t("激活版本")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -293,20 +322,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // MQTT 配置区域
+        // MQTT configuration area
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "MQTT 配置"
+                text: i18n.t("MQTT 配置")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -319,7 +348,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "服务端点"
+                    text: i18n.t("服务端点")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -339,7 +368,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "客户端 ID"
+                    text: i18n.t("客户端 ID")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -358,7 +387,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "用户名"
+                    text: i18n.t("用户名")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -377,7 +406,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "密码"
+                    text: i18n.t("密码")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -391,7 +420,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "发布主题"
+                    text: i18n.t("发布主题")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -410,7 +439,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "订阅主题"
+                    text: i18n.t("订阅主题")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -430,20 +459,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 可写目录（缓存 / 日志 / 音乐等）
+        // Writable directory (cache/log/ Music, etc.)
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "数据目录"
+                text: i18n.t("数据目录")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -451,18 +480,18 @@ ScrollView {
 
             Text {
                 Layout.fillWidth: true
-                text: "配置文件仍在用户数据目录。点「选择」打开系统文件夹对话框；「默认」清空为系统默认。保存后下次启动会从旧目录复制到新路径。"
+                text: i18n.t("配置文件仍在用户数据目录。点「选择」打开系统文件夹对话框；「默认」清空为系统默认。保存后下次启动会从旧目录复制到新路径。")
                 font.pixelSize: Theme.fontSizeXs
                 color: Theme.textSecondary
                 wrapMode: Text.WordWrap
             }
 
-            // 缓存
+            // Cache
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "缓存目录"
+                    text: i18n.t("缓存目录")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -482,7 +511,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: i18n.t("选择")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -506,7 +535,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: i18n.t("默认")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -531,12 +560,12 @@ ScrollView {
                 }
             }
 
-            // 日志
+            // Log
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "日志目录"
+                    text: i18n.t("日志目录")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -556,7 +585,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: i18n.t("选择")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -580,7 +609,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: i18n.t("默认")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -605,12 +634,12 @@ ScrollView {
                 }
             }
 
-            // 音乐
+            // Music
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "音乐缓存"
+                    text: i18n.t("音乐缓存")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -630,7 +659,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: i18n.t("选择")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -654,7 +683,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: i18n.t("默认")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -679,12 +708,12 @@ ScrollView {
                 }
             }
 
-            // 唤醒词
+            // Wake word
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "唤醒词目录"
+                    text: i18n.t("唤醒词目录")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -704,7 +733,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: i18n.t("选择")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -728,7 +757,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: i18n.t("默认")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -753,12 +782,12 @@ ScrollView {
                 }
             }
 
-            // MCP 插件
+            // MCP plugin
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingSm
                 Text {
-                    text: "MCP 插件目录"
+                    text: i18n.t("MCP 插件目录")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 100
@@ -778,7 +807,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "选择"
+                    text: i18n.t("选择")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32
@@ -802,7 +831,7 @@ ScrollView {
                     }
                 }
                 Button {
-                    text: "默认"
+                    text: i18n.t("默认")
                     font.pixelSize: Theme.fontSizeSm
                     Layout.preferredWidth: 64
                     Layout.preferredHeight: 32

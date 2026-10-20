@@ -1,10 +1,10 @@
-"""插件管理器.
+"""Plug-in manager.
 
-管理插件生命周期，支持依赖声明和拓扑排序。
+manages the plug-in life cycle and supports dependency declaration and topological sorting.
 """
-
 from typing import TYPE_CHECKING, Any, List, Optional
 
+from src.i18n import t
 from src.logging import get_logger
 
 from .base import Plugin
@@ -16,14 +16,14 @@ logger = get_logger()
 
 
 class PluginManager:
-    """插件管理器.
+    """Plug-in manager.
 
-    职责:
-    - 按依赖关系拓扑排序
-    - 自动注入插件依赖
-    - 统一 setup/start/stop 广播
-    - 错误隔离，单个插件失败不影响其他插件
-    - 失败标记 + 依赖失败时跳过下游
+    Responsibilities:
+    - Sort by dependency topology
+    - Automatically inject plug-in dependencies
+    - Unify setup/start/stop broadcast
+    - Error isolation, the failure of a single plug-in does not affect other plug-ins
+    - Failure mark Skip downstream when dependency fails
     """
 
     def __init__(self) -> None:
@@ -32,9 +32,9 @@ class PluginManager:
         self._sorted: bool = False
 
     def register(self, *plugins: Plugin) -> None:
-        """注册插件.
+        """Register the plug-in.
 
-        先按 priority 排序，后续 setup_all 时会按依赖拓扑排序。
+        Sort by priority first, and then sort by dependency topology during setup_all.
         """
         sorted_plugins = sorted(plugins, key=lambda p: getattr(p, "priority", 50))
         for p in sorted_plugins:
@@ -45,20 +45,20 @@ class PluginManager:
                     if isinstance(name, str) and name:
                         self._by_name[name] = p
                 except Exception as e:
-                    logger.error(f"插件注册失败: {e}", exc_info=True)
+                    logger.error(t('插件注册失败: {value1}', value1=e), exc_info=True)
         self._sorted = False
 
     def get_plugin(self, name: str) -> Optional[Plugin]:
-        """根据插件名获取插件实例."""
+        """Get plug-in instance based on plug-in name."""
         return self._by_name.get(name)
 
     def is_failed(self, name: str) -> bool:
-        """插件是否失败（未注册视为失败）."""
+        """Whether the plug-in failed (not registered is considered a failure)."""
         plugin = self._by_name.get(name)
         return plugin is None or plugin.failed
 
     def failed_plugins(self) -> List[str]:
-        """返回所有已失败插件名."""
+        """Returns all failed plug-in names."""
         return [
             p.name
             for p in self._plugins
@@ -66,38 +66,38 @@ class PluginManager:
         ]
 
     def _dependencies_ok(self, plugin: Plugin) -> bool:
-        """检查插件声明的依赖是否都可用（已注册且未失败）."""
+        """Check whether the dependencies declared by the plug-in are all available (registered and not failed)."""
         requires = getattr(plugin, "requires", []) or []
         for dep_name in requires:
             dep = self._by_name.get(dep_name)
             if dep is None:
                 logger.warning(
-                    f"插件 {getattr(plugin, 'name', 'unknown')} 依赖 {dep_name} 未注册"
+                    t('插件 {value1} 依赖 {value3} 未注册', value1=getattr(plugin, 'name', 'unknown'), value3=dep_name)
                 )
                 return False
             if dep.failed:
                 logger.warning(
-                    f"插件 {getattr(plugin, 'name', 'unknown')} 依赖 {dep_name} 已失败，跳过"
+                    t('插件 {value1} 依赖 {value3} 已失败，跳过', value1=getattr(plugin, 'name', 'unknown'), value3=dep_name)
                 )
                 return False
         return True
 
     def _active_plugins(self) -> List[Plugin]:
-        """未失败的插件列表."""
+        """Non-failed plug-in list."""
         return [p for p in self._plugins if not p.failed]
 
     def _topological_sort(self) -> List[Plugin]:
-        """拓扑排序插件列表，确保依赖先于被依赖者初始化.
+        """Topological sorting of the plug-in list, ensuring that dependencies are initialized before dependencies.
 
         Returns:
-            排序后的插件列表
+            Sorted plug-in list
 
         Raises:
-            ValueError: 存在循环依赖
+            ValueError: There is a circular dependency
         """
-        # 构建依赖图
+        # Build dependency graph
         in_degree: dict[str, int] = {}
-        dependents: dict[str, List[str]] = {}  # 被谁依赖
+        dependents: dict[str, List[str]] = {}  # is relied upon by
 
         for p in self._plugins:
             name = getattr(p, "name", "")
@@ -113,14 +113,14 @@ class PluginManager:
                     in_degree[name] = in_degree.get(name, 0) + 1
                     dependents[dep].append(name)
                 else:
-                    logger.warning(f"插件 {name} 声明的依赖 {dep} 未注册，忽略")
+                    logger.warning(t('插件 {value1} 声明的依赖 {value3} 未注册，忽略', value1=name, value3=dep))
 
-        # Kahn 算法
+        # Kahn algorithm
         queue = [name for name, degree in in_degree.items() if degree == 0]
         result: List[Plugin] = []
 
         while queue:
-            # 从入度为0的节点中选择 priority 最小的
+            # Selects the node with the smallest priority from the node with in-degree 0
             queue.sort(
                 key=lambda n: getattr(self._by_name.get(n), "priority", 50)
             )
@@ -135,74 +135,74 @@ class PluginManager:
                     queue.append(dependent)
 
         if len(result) != len([p for p in self._plugins if getattr(p, "name", "")]):
-            raise ValueError("插件存在循环依赖")
+            raise ValueError(t("插件存在循环依赖"))
 
-        # 添加没有 name 的插件到末尾
+        # Add plug-ins without name to the end
         unnamed = [p for p in self._plugins if not getattr(p, "name", "")]
         result.extend(unnamed)
 
         return result
 
     def _inject_dependencies(self) -> None:
-        """为每个插件注入其声明的依赖."""
+        """Injects its declared dependencies into each plug-in."""
         for p in self._plugins:
             requires = getattr(p, "requires", []) or []
             for dep_name in requires:
                 dep_plugin = self._by_name.get(dep_name)
                 if dep_plugin:
                     p._inject_dependency(dep_name, dep_plugin)
-                    logger.debug(f"注入依赖: {p.name} <- {dep_name}")
+                    logger.debug(t('注入依赖: {value1} <- {value3}', value1=p.name, value3=dep_name))
 
     async def setup_all(self, ctx: "PluginContext", cmd: "PluginCommands") -> None:
-        """初始化所有插件.
+        """Initialize all plug-ins.
 
-        按拓扑排序后的顺序初始化，自动注入依赖。
-        setup 失败或依赖失败的插件会被 mark_failed 并跳过后续生命周期。
+        Initialized in the order after topological sorting, automatically inject dependencies.
+        setup failure or plug-in dependency failure will be mark_failed and skip subsequent life cycles.
 
         Args:
-            ctx: 插件上下文
-            cmd: 插件命令接口
+            ctx: Plug-in context
+            cmd: Plug-in command interface
         """
-        # 拓扑排序
+        # Topological sorting
         if not self._sorted:
             try:
                 self._plugins = self._topological_sort()
                 self._sorted = True
                 logger.info(
-                    f"插件拓扑排序完成: {[p.name for p in self._plugins if hasattr(p, 'name')]}"
+                    t('插件拓扑排序完成: {value1}', value1=[p.name for p in self._plugins if hasattr(p, 'name')])
                 )
             except ValueError as e:
-                logger.error(f"插件排序失败: {e}", exc_info=True)
-                # 降级为优先级排序
+                logger.error(t('插件排序失败: {value1}', value1=e), exc_info=True)
+                # Demoted to prioritization
                 self._plugins.sort(key=lambda p: getattr(p, "priority", 50))
 
-        # 注入依赖
+        # Inject dependencies
         self._inject_dependencies()
 
-        # 初始化
+        # initialization
         for p in list(self._plugins):
             name = getattr(p, "name", "unknown")
             if p.failed:
                 continue
             if not self._dependencies_ok(p):
                 p.mark_failed()
-                logger.error(f"插件 {name} 因依赖失败被跳过 setup")
+                logger.error(t('插件 {value1} 因依赖失败被跳过 setup', value1=name))
                 continue
             try:
                 await p.setup(ctx, cmd)
             except Exception as e:
                 p.mark_failed()
-                logger.error(f"插件 {name} setup 失败: {e}", exc_info=True)
+                logger.error(t('插件 {value1} setup 失败: {value3}', value1=name, value3=e), exc_info=True)
 
     async def start_all(self) -> None:
-        """启动所有未失败的插件."""
+        """Start all plug-ins that have not failed."""
         for p in list(self._plugins):
             if p.failed:
                 continue
             if not self._dependencies_ok(p):
                 p.mark_failed()
                 logger.error(
-                    f"插件 {getattr(p, 'name', 'unknown')} 因依赖失败被跳过 start"
+                    t('插件 {value1} 因依赖失败被跳过 start', value1=getattr(p, 'name', 'unknown'))
                 )
                 continue
             try:
@@ -210,62 +210,62 @@ class PluginManager:
             except Exception as e:
                 p.mark_failed()
                 logger.error(
-                    f"插件 {getattr(p, 'name', 'unknown')} start 失败: {e}",
+                    t('插件 {value1} start 失败: {value3}', value1=getattr(p, 'name', 'unknown'), value3=e),
                     exc_info=True,
                 )
 
     async def notify_protocol_connected(self, protocol: Any) -> None:
-        """通知协议已连接."""
+        """Notifies that the protocol is connected."""
         for p in self._active_plugins():
             try:
                 if p.on_protocol_connected:
                     await p.on_protocol_connected(protocol)
             except Exception as e:
                 logger.error(
-                    f"插件 {getattr(p, 'name', 'unknown')} on_protocol_connected 失败: {e}",
+                    t('插件 {value1} on_protocol_connected 失败: {value3}', value1=getattr(p, 'name', 'unknown'), value3=e),
                     exc_info=True,
                 )
 
     async def notify_incoming_json(self, message: Any) -> None:
-        """通知收到 JSON 消息."""
+        """Notifies that JSON has been received Message."""
         for p in self._active_plugins():
             try:
                 await p.on_incoming_json(message)
             except Exception as e:
                 logger.error(
-                    f"插件 {getattr(p, 'name', 'unknown')} on_incoming_json 失败: {e}",
+                    t('插件 {value1} on_incoming_json 失败: {value3}', value1=getattr(p, 'name', 'unknown'), value3=e),
                     exc_info=True,
                 )
 
     async def notify_incoming_audio(self, data: bytes) -> None:
-        """通知收到音频数据."""
+        """Notifies of receipt of audio data."""
         for p in self._active_plugins():
             try:
                 await p.on_incoming_audio(data)
             except Exception as e:
                 logger.error(
-                    f"插件 {getattr(p, 'name', 'unknown')} on_incoming_audio 失败: {e}",
+                    t('插件 {value1} on_incoming_audio 失败: {value3}', value1=getattr(p, 'name', 'unknown'), value3=e),
                     exc_info=True,
                 )
 
     async def notify_device_state_changed(self, state: Any) -> None:
-        """通知设备状态变更."""
+        """Notifies of device status change."""
         for p in self._active_plugins():
             try:
                 await p.on_device_state_changed(state)
             except Exception as e:
                 logger.error(
-                    f"插件 {getattr(p, 'name', 'unknown')} on_device_state_changed 失败: {e}",
+                    t('插件 {value1} on_device_state_changed 失败: {value3}', value1=getattr(p, 'name', 'unknown'), value3=e),
                     exc_info=True,
                 )
 
     async def stop_all(self) -> None:
-        """停止所有插件（逆序；失败插件仍尝试 stop 以便清理）."""
+        """Stops all plug-ins (in reverse order; failed plug-ins still try to stop for cleaning)."""
         for p in reversed(self._plugins):
             try:
                 await p.stop()
             except Exception as e:
                 logger.error(
-                    f"插件 {getattr(p, 'name', 'unknown')} stop 失败: {e}",
+                    t('插件 {value1} stop 失败: {value3}', value1=getattr(p, 'name', 'unknown'), value3=e),
                     exc_info=True,
                 )

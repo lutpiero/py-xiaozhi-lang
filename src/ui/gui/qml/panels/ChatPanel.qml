@@ -1,4 +1,4 @@
-// 对话面板
+// Dialogue Panel
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -14,7 +14,7 @@ Rectangle {
         anchors.margins: Theme.spacingLg
         spacing: Theme.spacingMd
 
-        // 对话
+        // Dialogue
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -27,7 +27,7 @@ Rectangle {
 
                 Text {
                     width: parent.width
-                    text: mainModel.ttsText || "等待对话..."
+                    text: mainModel.ttsText || i18n.t("等待对话...")
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontSizeMd
                     color: mainModel.ttsText ? Theme.textPrimary : Theme.textPlaceholder
@@ -37,7 +37,7 @@ Rectangle {
             }
         }
 
-        // 音乐 / 歌词
+        // Music / Lyrics
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: mainModel.musicLine ? 48 : 0

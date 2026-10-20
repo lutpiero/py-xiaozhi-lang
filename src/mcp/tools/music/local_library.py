@@ -1,10 +1,11 @@
-"""本地缓存曲库：扫描、列表、搜索."""
+"""Local cache music library: scan, list, search."""
 
 from __future__ import annotations
 
 import time
 from pathlib import Path
 
+from src.i18n import t
 from src.logging import get_logger
 
 from .cache import MusicCache
@@ -14,7 +15,7 @@ logger = get_logger()
 
 
 class LocalLibrary:
-    """围着 MusicCache 转的本地列表."""
+    """Local list that revolves around MusicCache."""
 
     def __init__(self, cache: MusicCache):
         self._cache = cache
@@ -38,10 +39,10 @@ class LocalLibrary:
         playlist: list[MusicMetadata] = []
         music_files = self._cache.list_music_files()
         if not music_files and not self._cache.root.exists():
-            logger.warning(f"缓存目录不存在: {self._cache.root}")
+            logger.warning(t('缓存目录不存在: {value1}', value1=self._cache.root))
             return playlist
 
-        logger.debug(f"找到 {len(music_files)} 个音乐文件")
+        logger.debug(t('找到 {value1} 个音乐文件', value1=len(music_files)))
 
         for file_path in music_files:
             try:
@@ -50,12 +51,12 @@ class LocalLibrary:
                     metadata.extract_metadata()
                 playlist.append(metadata)
             except Exception as e:
-                logger.debug(f"处理音乐文件失败 {file_path.name}: {e}")
+                logger.debug(t('处理音乐文件失败 {value1}: {value3}', value1=file_path.name, value3=e))
 
         playlist.sort(key=lambda x: (x.artist or "Unknown", x.title or x.filename))
         self._playlist = playlist
         self._last_scan_time = now
-        logger.info(f"扫描完成，找到 {len(playlist)} 首本地音乐")
+        logger.info(t('扫描完成，找到 {value1} 首本地音乐', value1=len(playlist)))
         return playlist
 
     def get_playlist(self, force_refresh: bool = False) -> dict:
@@ -64,7 +65,7 @@ class LocalLibrary:
             if not playlist:
                 return {
                     "status": "info",
-                    "message": "本地缓存中没有音乐文件",
+                    "message": t("本地缓存中没有音乐文件"),
                     "playlist": [],
                     "total_count": 0,
                 }
@@ -72,15 +73,15 @@ class LocalLibrary:
             formatted = [m.display_name() for m in playlist]
             return {
                 "status": "success",
-                "message": f"找到 {len(playlist)} 首本地音乐",
+                "message": t('找到 {value1} 首本地音乐', value1=len(playlist)),
                 "playlist": formatted,
                 "total_count": len(playlist),
             }
         except Exception as e:
-            logger.error(f"获取本地歌单失败: {e}", exc_info=True)
+            logger.error(t('获取本地歌单失败: {value1}', value1=e), exc_info=True)
             return {
                 "status": "error",
-                "message": f"获取本地歌单失败: {str(e)}",
+                "message": t('获取本地歌单失败: {value1}', value1=str(e)),
                 "playlist": [],
                 "total_count": 0,
             }
@@ -91,7 +92,7 @@ class LocalLibrary:
             if not playlist:
                 return {
                     "status": "info",
-                    "message": "本地缓存中没有音乐文件",
+                    "message": t("本地缓存中没有音乐文件"),
                     "results": [],
                     "found_count": 0,
                 }
@@ -121,21 +122,21 @@ class LocalLibrary:
 
             return {
                 "status": "success",
-                "message": f"在本地音乐中找到 {len(results)} 首匹配的歌曲",
+                "message": t('在本地音乐中找到 {value1} 首匹配的歌曲', value1=len(results)),
                 "results": results,
                 "found_count": len(results),
             }
         except Exception as e:
-            logger.error(f"搜索本地音乐失败: {e}", exc_info=True)
+            logger.error(t('搜索本地音乐失败: {value1}', value1=e), exc_info=True)
             return {
                 "status": "error",
-                "message": f"搜索失败: {str(e)}",
+                "message": t('搜索失败: {value1}', value1=str(e)),
                 "results": [],
                 "found_count": 0,
             }
 
     def resolve(self, file_id: str) -> tuple[Path, MusicMetadata] | None:
-        """按 id 找文件并读元数据."""
+        """Find files by id and read metadata."""
         self._cache.prepare()
         path = self._cache.find_song_file(file_id)
         if path is None:

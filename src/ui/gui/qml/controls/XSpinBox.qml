@@ -1,4 +1,4 @@
-// 自定义数值调节组件
+// Customized numerical adjustment component
 import QtQuick
 import QtQuick.Controls
 import "../theme"
@@ -11,7 +11,7 @@ SpinBox {
 
     editable: true
 
-    // 背景
+    // Background
     background: Rectangle {
         radius: Theme.radiusMd
         color: Theme.background
@@ -19,7 +19,7 @@ SpinBox {
         border.color: root.activeFocus ? Theme.primary : Theme.border
     }
 
-    // 数值显示
+    // Numeric display
     contentItem: TextInput {
         z: 2
         text: root.textFromValue(root.value, root.locale)
@@ -39,7 +39,7 @@ SpinBox {
         anchors.rightMargin: 36
     }
 
-    // 减号按钮
+    // Minus button
     down.indicator: Item {
         x: 0
         width: 36
@@ -62,7 +62,7 @@ SpinBox {
         }
     }
 
-    // 加号按钮
+    // Plus button
     up.indicator: Item {
         x: root.width - width
         width: 36

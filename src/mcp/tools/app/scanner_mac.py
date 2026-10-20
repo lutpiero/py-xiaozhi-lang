@@ -1,30 +1,30 @@
-"""macOS应用程序扫描器.
+"""macOS application scanner.
 
-专门用于macOS系统的应用程序扫描和管理
+Specialized for application scanning and management of macOS systems
 """
-
 import platform
 import subprocess
 from pathlib import Path
 from typing import Dict, List
 
+from src.i18n import t
 from src.logging import get_logger
 
 logger = get_logger()
 
 
 def scan_installed_applications() -> List[Dict[str, str]]:
-    """扫描macOS系统中已安装的应用程序.
+    """Scans installed applications in macOS systems.
 
     Returns:
-        List[Dict[str, str]]: 应用程序列表
+        List[Dict[str, str]]: Application list
     """
     if platform.system() != "Darwin":
         return []
 
     apps = []
 
-    # 扫描 /Applications 目录
+    # Scan for /Applications Catalog
     applications_dir = Path("/Applications")
     if applications_dir.exists():
         for app_path in applications_dir.glob("*.app"):
@@ -39,7 +39,7 @@ def scan_installed_applications() -> List[Dict[str, str]]:
                 }
             )
 
-    # 扫描用户应用程序目录
+    # Scans user applications Directory
     user_apps_dir = Path.home() / "Applications"
     if user_apps_dir.exists():
         for app_path in user_apps_dir.glob("*.app"):
@@ -54,7 +54,7 @@ def scan_installed_applications() -> List[Dict[str, str]]:
                 }
             )
 
-    # 添加常用系统应用
+    # Add common system applications
     system_apps = [
         {
             "name": "Calculator",
@@ -96,15 +96,15 @@ def scan_installed_applications() -> List[Dict[str, str]]:
     ]
     apps.extend(system_apps)
 
-    logger.info(f"[MacScanner] 扫描完成，找到 {len(apps)} 个应用程序")
+    logger.info(t('[MacScanner] 扫描完成，找到 {value1} 个应用程序', value1=len(apps)))
     return apps
 
 
 def scan_running_applications() -> List[Dict[str, str]]:
-    """扫描macOS系统中正在运行的应用程序.
+    """Scans running applications in macOS systems.
 
     Returns:
-        List[Dict[str, str]]: 正在运行的应用程序列表
+        List[Dict[str, str]]: Running application list
     """
     if platform.system() != "Darwin":
         return []
@@ -112,7 +112,7 @@ def scan_running_applications() -> List[Dict[str, str]]:
     apps = []
 
     try:
-        # 使用ps命令获取进程信息
+        # Use ps command to obtain process information
         result = subprocess.run(
             ["ps", "-eo", "pid,ppid,comm,command"],
             capture_output=True,
@@ -121,14 +121,14 @@ def scan_running_applications() -> List[Dict[str, str]]:
         )
 
         if result.returncode == 0:
-            lines = result.stdout.strip().split("\n")[1:]  # 跳过标题行
+            lines = result.stdout.strip().split("\n")[1:]  # Skip header line
 
             for line in lines:
                 parts = line.strip().split(None, 3)
                 if len(parts) >= 4:
                     pid, ppid, comm, command = parts
 
-                    # 过滤掉不需要的进程
+                    # Filter out unwanted processes
                     if _should_include_process(comm, command):
                         display_name = _extract_app_name(comm, command)
                         clean_name = clean_app_name(display_name)
@@ -144,27 +144,27 @@ def scan_running_applications() -> List[Dict[str, str]]:
                             }
                         )
 
-        logger.info(f"[MacScanner] 找到 {len(apps)} 个正在运行的应用程序")
+        logger.info(t('[MacScanner] 找到 {value1} 个正在运行的应用程序', value1=len(apps)))
         return apps
 
     except Exception as e:
-        logger.error(f"[MacScanner] 扫描运行应用失败: {e}", exc_info=True)
+        logger.error(t('[MacScanner] 扫描运行应用失败: {value1}', value1=e), exc_info=True)
         return []
 
 
 def _should_include_process(comm: str, command: str) -> bool:
-    """判断是否应该包含该进程.
+    """determines whether the process should be included.
 
     Args:
-        comm: 进程名称
-        command: 完整命令
+        comm: process name
+        command: complete command
 
     Returns:
-        bool: 是否包含
+        bool: Whether to include
     """
-    # 排除系统进程和服务
+    # Exclude system processes and services
     system_processes = {
-        # 系统核心进程
+        # System core process
         "kernel_task",
         "launchd",
         "kextd",
@@ -183,7 +183,7 @@ def _should_include_process(comm: str, command: str) -> bool:
         "CoreLocationAgent",
         "bluetoothd",
         "wirelessproxd",
-        # 系统服务
+        # System services
         "com.apple.",
         "suhelperd",
         "softwareupdated",
@@ -196,7 +196,7 @@ def _should_include_process(comm: str, command: str) -> bool:
         "accountsd",
         "CallHistorySyncHelper",
         "CallHistoryPluginHelper",
-        # 驱动和扩展
+        # Drivers and extensions
         "AppleSpell",
         "coreaudiod",
         "audio",
@@ -207,7 +207,7 @@ def _should_include_process(comm: str, command: str) -> bool:
         "mdworker",
         "mds",
         "spotlight",
-        # 其他系统组件
+        # Other system components
         "automountd",
         "autofsd",
         "aslmanager",
@@ -221,15 +221,15 @@ def _should_include_process(comm: str, command: str) -> bool:
         "watchdogd",
     }
 
-    # 检查是否是系统进程
+    # Check whether it is a system process
     comm_lower = comm.lower()
     command_lower = command.lower()
 
-    # 排除空名称或系统路径
+    # Exclude empty names or system paths
     if not comm or comm_lower in system_processes:
         return False
 
-    # 排除系统路径下的进程
+    # Exclude processes under the system path
     if any(
         path in command_lower
         for path in [
@@ -251,7 +251,7 @@ def _should_include_process(comm: str, command: str) -> bool:
     ):
         return False
 
-    # 排除明显的系统服务
+    # Exclude obvious system services
     if any(
         keyword in command_lower
         for keyword in [
@@ -269,23 +269,23 @@ def _should_include_process(comm: str, command: str) -> bool:
     ):
         return False
 
-    # 只包含用户应用程序
+    # contains only user applications
     user_app_indicators = ["/applications/", "/users/", "~/", ".app/contents/macos/"]
 
     return any(indicator in command_lower for indicator in user_app_indicators)
 
 
 def _extract_app_name(comm: str, command: str) -> str:
-    """从进程信息中提取应用程序名称.
+    """Extract application name from process information.
 
     Args:
-        comm: 进程名称
-        command: 完整命令
+        comm: process name
+        command: complete command
 
     Returns:
-        str: 应用程序名称
+        str: Application name
     """
-    # 尝试从命令路径中提取.app名称
+    # Attempts to extract .app name from command path
     if ".app/Contents/MacOS/" in command:
         try:
             app_path = command.split(".app/Contents/MacOS/")[0] + ".app"
@@ -294,7 +294,7 @@ def _extract_app_name(comm: str, command: str) -> str:
         except (IndexError, AttributeError):
             pass
 
-    # 尝试从/Applications/路径提取
+    # Attempts to extract from /Applications/ path
     if "/Applications/" in command:
         try:
             parts = command.split("/Applications/")[1].split("/")[0]
@@ -303,7 +303,7 @@ def _extract_app_name(comm: str, command: str) -> str:
         except (IndexError, AttributeError):
             pass
 
-    # 使用进程名称
+    # Use process name
     return comm if comm else "Unknown"
 
 

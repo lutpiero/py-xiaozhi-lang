@@ -1,17 +1,17 @@
-"""MCP 工具目录：分组与展示名，供设置 UI.
+"""MCP tool directory: grouping and display name for setting UI.
 
-契约（开发时遵守）
+Contract (complied during development)
 -----------------
-1. **内置工具**放在 ``src/mcp/tools/<pkg>/register.py``，用 ``McpTool("name", ...)``
-   或 ``McpTool(name="name", ...)`` 注册；目录由扫描这些文件得到，**不写死名单/中文标题**。
-2. **分组 id / 组标题** = 包目录名 ``<pkg>``（如 ``music``、``weather``、``camera``），
-   与磁盘 ``tools/<pkg>`` 一致，设置页直接显示包名。
-3. **工具展示名** = name 最后一段（``music_player.pause`` → ``pause``）。
-4. **外挂**：manifest.tools / 源码 ``name=`` 启发式；组标题 = plugin id
-   （若 manifest 有 ``name`` 字段则用该字段，属插件自描述而非宿主写死）。
-5. **禁用**配置：``MCP_TOOLS.DISABLED``（tool 全名列表）。
+1. **Built-in tools** are placed in ``src/mcp/tools/<pkg>/register.py``, using ``McpTool("name", ...)``
+   or ``McpTool(name="name", ...)`` registration; the directory is obtained by scanning these files, **do not hard-code the list/Chinese title**.
+2. **Group id / Group title** = package directory name ``<pkg>`` (such as ``music``, ``weather``, ``camera``),
+   and disk ``tools/<pkg>`` is consistent, and the package name is directly displayed on the setting page.
+3. **Tool display name** = name last paragraph (``music_player.pause`` → ``pause``).
+4. **Plug-in**: manifest.tools/source code ``name=`` heuristic; group title = plugin id
+   (if the manifest has a ``name`` field, use this field, which is self-describing by the plug-in and not hard-coded by the host).
+5. **Disable** configuration: ``MCP_TOOLS.DISABLED`` (tool full name list).
 
-运行时已注册、却未扫到的名字会并入目录（source=runtime）。
+Names that have been registered at runtime but not scanned will be merged into the directory (source=runtime).
 """
 
 from __future__ import annotations
@@ -23,10 +23,10 @@ from pathlib import Path
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# 正则：扫描注册源码
+# Regular: Scan the registration source code
 # ---------------------------------------------------------------------------
 
-# McpTool("a.b", ...) 或 McpTool('a.b',
+# McpTool("a.b", ...) or McpTool('a.b',
 _MCP_TOOL_POS_NAME = re.compile(
     r"""McpTool\s*\(\s*['"]([a-zA-Z][a-zA-Z0-9_.]*)['"]"""
 )
@@ -35,7 +35,7 @@ _MCP_TOOL_KW_NAME = re.compile(
     r"""McpTool\s*\([^)]*?\bname\s*=\s*['"]([a-zA-Z][a-zA-Z0-9_.]*)['"]""",
     re.DOTALL,
 )
-# 外挂 / 通用 name="..."
+# Plug-in/General name="..."
 _NAME_KWARG_RE = re.compile(
     r"""\bname\s*=\s*['"]([a-zA-Z0-9_.-]+)['"]"""
 )
@@ -44,7 +44,7 @@ def _tools_package_dir() -> Path:
 
 
 def tool_group(name: str, *, fallback_pkg: str | None = None) -> str:
-    """分组 id：优先调用方传入的包名；否则用 name 前缀启发式."""
+    """group id: Priority is given to the package name passed in by the caller; otherwise, the name prefix heuristic is used."""
     if fallback_pkg:
         return fallback_pkg
     if "." in name:
@@ -64,7 +64,7 @@ def group_label(group_id: str) -> str:
 
 
 def _extract_mcp_tool_names(text: str) -> list[str]:
-    """返回 tool_name 列表（去重保序）."""
+    """returns the tool_name list (removing duplication and preserving order)."""
     found: list[str] = []
     seen: set[str] = set()
 
@@ -93,7 +93,7 @@ def _scan_register_file(path: Path, pkg: str) -> list[dict[str, str]]:
             {
                 "name": name,
                 "group": pkg,
-                "groupLabel": pkg,  # 不写死中文，组标题=目录名
+                "groupLabel": pkg,  # without writing Chinese characters, group title = directory name
                 "label": tool_label(name),
                 "source": "builtin",
             }
@@ -103,7 +103,7 @@ def _scan_register_file(path: Path, pkg: str) -> list[dict[str, str]]:
 
 @lru_cache(maxsize=1)
 def discover_builtin_catalog_rows() -> tuple[dict[str, str], ...]:
-    """扫描 ``src/mcp/tools/*/register.py``，结果缓存（进程内）."""
+    """Scan ``src/mcp/tools/*/register.py``, the results are cached (in-process)."""
     root = _tools_package_dir()
     if not root.is_dir():
         return tuple()
@@ -116,7 +116,7 @@ def discover_builtin_catalog_rows() -> tuple[dict[str, str], ...]:
         if not reg.is_file():
             continue
         rows.extend(_scan_register_file(reg, child.name))
-    # tuple of frozendict-like：用 tuple[dict] 但 dict 可变；缓存返回 tuple 拷贝用
+    # tuple of frozendict-like: use tuple[dict] but dict is variable; cache returns tuple copy using
     return tuple(rows)
 
 
@@ -125,7 +125,7 @@ def clear_builtin_catalog_cache() -> None:
 
 
 def builtin_catalog_rows() -> list[dict[str, str]]:
-    """设置页内置工具行（扫描 tools 包，非写死列表）."""
+    """Built-in tool row in the settings page (scan tools package, not hard-coded list)."""
     return [dict(r) for r in discover_builtin_catalog_rows()]
 
 
@@ -150,7 +150,7 @@ def is_tool_enabled(name: str, disabled: list[str] | set[str] | None) -> bool:
     return name not in set(disabled)
 
 
-# 兼容旧调用：动态 group 标签表（外挂会往里写）
+# is compatible with old calls: dynamic group label table (plug-ins will be written in)
 GROUP_LABELS: dict[str, str] = {}
 
 
@@ -225,7 +225,7 @@ def _tools_from_plugin_sources(
             text = pf.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             continue
-        # 优先 McpTool(...) 形式
+        # takes precedence over McpTool(...) format
         for name in _extract_mcp_tool_names(text):
             if name not in seen:
                 seen.add(name)
@@ -302,7 +302,7 @@ def full_catalog_rows(
     runtime_names: list[str] | None = None,
     extra_disabled: list[str] | None = None,
 ) -> list[dict[str, str]]:
-    """内置（扫描 tools/）+ 磁盘外挂 + 运行时 + disabled 残留."""
+    """built-in (scan tools/) disk plug-in runtime disabled residual."""
     rows = builtin_catalog_rows()
     seen = {r["name"] for r in rows}
     pkg_labels = {r["group"]: r["groupLabel"] for r in rows}
@@ -339,7 +339,7 @@ def full_catalog_rows(
 def _runtime_group_for(
     name: str, pkg_labels: dict[str, str]
 ) -> tuple[str, str]:
-    """运行时/残留工具：尽量归到已扫描到的内置包组."""
+    """Runtime/residual tools: try to belong to the scanned built-in package group."""
     builtins = discover_builtin_catalog_rows()
     for row in builtins:
         if name == row["name"]:

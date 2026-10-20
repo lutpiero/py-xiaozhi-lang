@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""校验外挂 MCP 插件包结构（不启动完整应用）."""
+"""Verifies the plug-in MCP plug-in package structure (does not start the complete application)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 def check_plugin(path: Path, *, strict: bool = False) -> list[str]:
-    """返回错误列表；空 = 通过."""
+    """returns the error list; empty = passed."""
     errors: list[str] = []
     if not path.is_dir():
         return [f"不是目录: {path}"]
@@ -60,7 +60,7 @@ def check_plugin(path: Path, *, strict: bool = False) -> list[str]:
         if "tool_name_prefix" not in manifest:
             errors.append("严格模式要求 tool_name_prefix")
 
-    # lib 可选；若存在应是目录
+    # lib Optional; if it exists, it should be the directory
     lib = path / "lib"
     if lib.exists() and not lib.is_dir():
         errors.append("lib 存在但不是目录")

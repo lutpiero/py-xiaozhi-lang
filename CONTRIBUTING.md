@@ -92,6 +92,23 @@ Maintainers generally review contributions using the following workflow:
 4. Merge after CI passes and review feedback is addressed.
 5. Ship through the normal release process; merge does not guarantee an immediate release.
 
+## Localization
+
+User-facing Python and QML text uses the JSON catalogs in `src/i18n/locales/`.
+Wrap source strings with `t("...")` in Python and `i18n.t("...")` in QML, then
+refresh the catalogs:
+
+```bash
+python scripts/i18n_extract.py --write
+python scripts/i18n_translate.py --write
+python scripts/i18n_check.py
+```
+
+Add product-specific wording to `scripts/i18n_overrides.json` instead of editing
+generated translations by hand. Language selection is resolved from `--lang`,
+`XIAOZHI_LANG`, `SYSTEM_OPTIONS.LANGUAGE`, and the OS locale, in that order.
+Changing the language takes effect after restarting the application.
+
 ## Detailed Guides
 
 - Documentation site: <https://huangjunsen0406.github.io/py-xiaozhi/>

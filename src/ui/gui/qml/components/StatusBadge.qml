@@ -1,4 +1,4 @@
-// 状态徽章组件
+// Status badge component
 import QtQuick
 import "../theme"
 
@@ -27,7 +27,7 @@ Rectangle {
         Rectangle {
             width: 6
             height: 6
-            // 小圆点：用 radiusSm(4) 接近满圆，避免魔法数 3
+            // Small dots: Use radiusSm(4) to approach the full circle and avoid the magic number 3
             radius: Theme.radiusSm
             anchors.verticalCenter: parent.verticalCenter
             color: {

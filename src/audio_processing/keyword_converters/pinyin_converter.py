@@ -4,15 +4,15 @@ from typing import List
 
 from .base import KeywordConverter
 
-# 声母列表（按长度降序排列以优先匹配长声母）
+# List of initial consonants (arranged in descending order of length to give priority to matching long initial consonants)
 INITIALS = [
-    "zh", "ch", "sh",  # 翘舌音（2字符，优先匹配）
-    "b", "p", "m", "f",  # 唇音
-    "d", "t", "n", "l",  # 舌尖音
-    "g", "k", "h",  # 舌根音
-    "j", "q", "x",  # 舌面音
-    "r", "z", "c", "s",  # 其他
-    "y", "w",  # 零声母标记
+    "zh", "ch", "sh",  # Tubular sound (2 characters, priority matching)
+    "b", "p", "m", "f",  # Labial sound
+    "d", "t", "n", "l",  # Top of the tongue
+    "g", "k", "h",  # Root of the tongue
+    "j", "q", "x",  # Surface of the tongue
+    "r", "z", "c", "s",  # Other
+    "y", "w",  # Zero initial consonant mark
 ]
 
 

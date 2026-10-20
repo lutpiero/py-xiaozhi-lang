@@ -1,9 +1,10 @@
-"""天气 MCP 工具注册（当前 mock，待接真 API）."""
+"""Register the weather MCP tool (current mock, to be connected to the real API)."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
+from src.i18n import t
 from src.logging import get_logger
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
@@ -13,29 +14,29 @@ logger = get_logger()
 
 
 def register_weather_tools(add_tool: Callable[[McpTool], None]) -> None:
-    """向 McpServer 注册天气工具."""
+    """Register the weather tool with McpServer."""
 
     tools: list[McpTool] = [
         McpTool(
             "get_weather",
             (
-                "获取指定城市的当前天气。"
-                "参数: city - 城市名称（如：北京、上海、广州）"
+                t("获取指定城市的当前天气。"
+                "参数: city - 城市名称（如：北京、上海、广州）")
             ),
             PropertyList(
-                [Property("city", PropertyType.STRING, default_value="北京")]
+                [Property("city", PropertyType.STRING, default_value=t("北京"))]
             ),
             get_weather_payload,
         ),
         McpTool(
             "get_forecast",
             (
-                "获取指定城市的天气预报。"
-                "参数: city - 城市名称, days - 预报天数(1-7天)"
+                t("获取指定城市的天气预报。"
+                "参数: city - 城市名称, days - 预报天数(1-7天)")
             ),
             PropertyList(
                 [
-                    Property("city", PropertyType.STRING, default_value="北京"),
+                    Property("city", PropertyType.STRING, default_value=t("北京")),
                     Property(
                         "days",
                         PropertyType.INTEGER,
@@ -51,4 +52,4 @@ def register_weather_tools(add_tool: Callable[[McpTool], None]) -> None:
 
     for tool in tools:
         add_tool(tool)
-    logger.info("已注册 %d 个天气 MCP 工具（register_weather_tools, mock）", len(tools))
+    logger.info(t("已注册 %d 个天气 MCP 工具（register_weather_tools, mock）"), len(tools))

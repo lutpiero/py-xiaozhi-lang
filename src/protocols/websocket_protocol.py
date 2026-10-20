@@ -6,12 +6,13 @@ import ssl
 import websockets
 
 from src.constants.constants import AudioConfig
+from src.i18n import t
 from src.logging import get_logger
 from src.protocols.protocol import Protocol
 from src.utils.config_manager import get_config
 
-# 服务器可能使用自签名证书，暂时跳过客户端证书验证
-# 以避免生产环境中非正规SSL证书导致连接失败
+# The server may use a self-signed certificate, temporarily skipping client certificate verification
+# to avoid connection failure caused by informal SSL certificates in production environments
 ssl_context = ssl._create_unverified_context()
 
 logger = get_logger()
@@ -20,12 +21,12 @@ logger = get_logger()
 class WebsocketProtocol(Protocol):
     def __init__(self):
         super().__init__()
-        # 获取配置管理器实例
+        # Get configuration manager instance
         self.config = get_config()
         self.websocket = None
         self.connected = False
-        self.hello_received = None  # 初始化时先设为 None
-        # 消息处理任务引用，便于在关闭时取消
+        self.hello_received = None  # Set to initialization None
+        # Message processing task reference to facilitate cancellation when closing
         self._message_task = None
 
         self.WEBSOCKET_URL = self.config.get_config(
@@ -40,30 +41,30 @@ class WebsocketProtocol(Protocol):
         self.HEADERS = {
             "Authorization": f"Bearer {access_token}",
             "Protocol-Version": "1",
-            "Device-Id": device_id,  # 获取设备MAC地址
+            "Device-Id": device_id,  # Get device MAC address
             "Client-Id": client_id,
         }
 
     async def connect(self) -> bool:
         """
-        连接到WebSocket服务器.
+        to connect to the WebSocket server.
         """
         if self._is_closing:
-            logger.warning("连接正在关闭中，取消新的连接尝试")
+            logger.warning(t("连接正在关闭中，取消新的连接尝试"))
             return False
 
         try:
-            # 在连接时创建 Event，确保在正确的事件循环中
+            # Created at connection time Event, ensuring that
             self.hello_received = asyncio.Event()
 
-            # 判断是否应该使用 SSL
+            # Determine whether SSL should be used
             current_ssl_context = None
             if self.WEBSOCKET_URL.startswith("wss://"):
                 current_ssl_context = ssl_context
 
-            # 建立WebSocket连接 (兼容不同Python版本的写法)
+            # to establish a WebSocket connection (compatible with different Python versions)
             try:
-                # 新的写法 (在Python 3.11+版本中)
+                # new way of writing (in Python 3.11 version)
                 self.websocket = await websockets.connect(
                     uri=self.WEBSOCKET_URL,
                     ssl=current_ssl_context,
@@ -77,7 +78,7 @@ class WebsocketProtocol(Protocol):
                     proxy=None,
                 )
             except TypeError:
-                # 旧的写法 (在较早的Python版本中)
+                # old way of writing (In older Python versions)
                 self.websocket = await websockets.connect(
                     self.WEBSOCKET_URL,
                     ssl=current_ssl_context,
@@ -90,13 +91,13 @@ class WebsocketProtocol(Protocol):
                     compression=None,
                 )
 
-            # 启动消息处理循环（保存任务引用，关闭时可取消）
+            # Start the message processing loop (save the task reference and can be canceled when closing)
             self._message_task = asyncio.create_task(self._message_handler())
 
-            # 启动连接监控
+            # Start the connection monitoring
             self._start_connection_monitor()
 
-            # 发送客户端hello消息
+            # Send client hello message
             hello_message = {
                 "type": "hello",
                 "version": 1,
@@ -113,52 +114,52 @@ class WebsocketProtocol(Protocol):
             }
             await self.send_text(json.dumps(hello_message))
 
-            # 等待服务器hello响应
+            # Wait for server hello response
             try:
                 await asyncio.wait_for(self.hello_received.wait(), timeout=10.0)
                 self.connected = True
-                self._reconnect_attempts = 0  # 重置重连计数
-                logger.info("已连接到WebSocket服务器")
+                self._reconnect_attempts = 0  # resets the reconnect count
+                logger.info(t("已连接到WebSocket服务器"))
 
-                # 通知连接状态变化
+                # Notifies the connection status change
                 if self._on_connection_state_changed:
-                    self._on_connection_state_changed(True, "连接成功")
+                    self._on_connection_state_changed(True, t("连接成功"))
 
                 return True
             except asyncio.TimeoutError:
-                logger.error("等待服务器hello响应超时")
+                logger.error(t("等待服务器hello响应超时"))
                 await self._do_cleanup()
                 if self._on_network_error:
-                    await self._on_network_error("等待响应超时")
+                    await self._on_network_error(t("等待响应超时"))
                 return False
 
         except Exception as e:
-            logger.error(f"WebSocket连接失败: {e}", exc_info=True)
+            logger.error(t('WebSocket连接失败: {value1}', value1=e), exc_info=True)
             await self._do_cleanup()
             if self._on_network_error:
-                await self._on_network_error(f"无法连接服务: {str(e)}")
+                await self._on_network_error(t('无法连接服务: {value1}', value1=str(e)))
             return False
 
-    # ============ 模板方法实现 ============
+    # ============ Template method implementation ============
 
     @property
     def _monitor_interval(self) -> float:
-        """WSS 连接监控检查间隔（秒）."""
+        """WSS connection monitoring check interval (seconds)."""
         return 5.0
 
     def _is_connected(self) -> bool:
-        """检查 WebSocket 连接是否存活."""
+        """Check WebSocket Whether the connection is alive."""
         if not self.websocket:
             return False
         return self.websocket.close_code is None
 
     async def _do_cleanup(self):
-        """WebSocket 协议特定资源清理.
+        """WebSocket protocol specific resource cleanup.
 
-        清理消息处理任务、心跳任务、WebSocket 连接和心跳时间戳.
-        不负责取消连接监控任务（基类 _handle_connection_loss 负责）.
+        Clean up message processing tasks, heartbeat tasks, WebSocket Connection and heartbeat timestamp.
+        is not responsible for canceling the connection monitoring task (base class _handle_connection_loss Responsible).
         """
-        # 取消消息处理任务
+        # Cancel message processing task
         if self._message_task and not self._message_task.done():
             self._message_task.cancel()
             try:
@@ -166,23 +167,23 @@ class WebsocketProtocol(Protocol):
             except asyncio.CancelledError:
                 pass
             except Exception as e:
-                logger.debug(f"等待消息任务取消时异常: {e}")
+                logger.debug(t('等待消息任务取消时异常: {value1}', value1=e))
         self._message_task = None
 
-        # 关闭WebSocket连接
+        # Close the WebSocket connection
         if self.websocket and self.websocket.close_code is None:
             try:
                 await self.websocket.close()
             except Exception as e:
-                logger.error(f"关闭WebSocket连接时出错: {e}", exc_info=True)
+                logger.error(t('关闭WebSocket连接时出错: {value1}', value1=e), exc_info=True)
 
         self.websocket = None
 
     def get_connection_info(self) -> dict:
-        """获取 WSS 连接信息.
+        """Get WSS connection information.
 
         Returns:
-            dict: 包含连接状态、重连次数等信息的字典
+            dict: A dictionary containing connection status, reconnection times and other information
         """
         info = super().get_connection_info()
         info.update(
@@ -198,7 +199,7 @@ class WebsocketProtocol(Protocol):
 
     async def _message_handler(self):
         """
-        处理接收到的WebSocket消息.
+        handles the received WebSocket message.
         """
         try:
             async for message in self.websocket:
@@ -211,51 +212,51 @@ class WebsocketProtocol(Protocol):
                             data = json.loads(message)
                             msg_type = data.get("type")
                             if msg_type == "hello":
-                                # 处理服务器 hello 消息
+                                # handles the server hello message
                                 await self._handle_server_hello(data)
                             else:
                                 if self._on_incoming_json:
                                     self._on_incoming_json(data)
                         except json.JSONDecodeError as e:
-                            logger.error(f"无效的JSON消息: {message}, 错误: {e}", exc_info=True)
+                            logger.error(t('无效的JSON消息: {value1}, 错误: {value3}', value1=message, value3=e), exc_info=True)
                     elif isinstance(message, bytes):
-                        # 二进制消息，可能是音频
+                        # Binary message, possibly audio
                         if self._on_incoming_audio:
                             self._on_incoming_audio(message)
                 except Exception as e:
-                    # 处理单个消息的错误，但继续处理其他消息
-                    logger.error(f"处理消息时出错: {e}", exc_info=True)
+                    # handles errors for a single message in the correct event loop, but continues processing other messages
+                    logger.error(t('处理消息时出错: {value1}', value1=e), exc_info=True)
                     continue
 
         except asyncio.CancelledError:
-            logger.debug("消息处理任务被取消")
+            logger.debug(t("消息处理任务被取消"))
             return
         except websockets.ConnectionClosedOK as e:
             if not self._is_closing:
-                logger.info(f"WebSocket连接已由服务端正常关闭: {e}")
+                logger.info(t('WebSocket连接已由服务端正常关闭: {value1}', value1=e))
                 await self._handle_connection_loss(
-                    f"服务端关闭连接: {e.code}", clean=True
+                    t('服务端关闭连接: {value1}', value1=e.code), clean=True
                 )
         except websockets.ConnectionClosedError as e:
             if not self._is_closing:
-                logger.info(f"WebSocket连接错误关闭: {e}")
-                await self._handle_connection_loss(f"连接错误: {e.code} {e.reason}")
+                logger.info(t('WebSocket连接错误关闭: {value1}', value1=e))
+                await self._handle_connection_loss(t('连接错误: {value1} {value3}', value1=e.code, value3=e.reason))
         except websockets.InvalidState as e:
-            logger.error(f"WebSocket状态无效: {e}", exc_info=True)
-            await self._handle_connection_loss("连接状态异常")
+            logger.error(t('WebSocket状态无效: {value1}', value1=e), exc_info=True)
+            await self._handle_connection_loss(t("连接状态异常"))
         except ConnectionResetError:
-            logger.warning("连接被重置")
-            await self._handle_connection_loss("连接被重置")
+            logger.warning(t("连接被重置"))
+            await self._handle_connection_loss(t("连接被重置"))
         except OSError as e:
-            logger.error(f"网络I/O错误: {e}", exc_info=True)
-            await self._handle_connection_loss("网络I/O错误")
+            logger.error(t('网络I/O错误: {value1}', value1=e), exc_info=True)
+            await self._handle_connection_loss(t("网络I/O错误"))
         except Exception as e:
-            logger.error(f"消息处理循环异常: {e}", exc_info=True)
-            await self._handle_connection_loss(f"消息处理异常: {str(e)}")
+            logger.error(t('消息处理循环异常: {value1}', value1=e), exc_info=True)
+            await self._handle_connection_loss(t('消息处理异常: {value1}', value1=str(e)))
 
     async def send_audio(self, data: bytes):
         """
-        发送音频数据.
+        Send audio data.
         """
         if not self.is_audio_channel_opened():
             return
@@ -263,25 +264,25 @@ class WebsocketProtocol(Protocol):
         try:
             await self.websocket.send(data)
         except websockets.ConnectionClosedOK as e:
-            # 服务端正常收回会话（如 TTS 结束后关闭），不算网络错误
-            logger.info(f"发送音频时连接已由服务端正常关闭: {e}")
+            # The server recovers the session normally (such as closing after TTS), which does not count as a network error
+            logger.info(t('发送音频时连接已由服务端正常关闭: {value1}', value1=e))
             await self._handle_connection_loss(
-                f"发送音频时服务端关闭: {e.code}", clean=True
+                t('发送音频时服务端关闭: {value1}', value1=e.code), clean=True
             )
         except websockets.ConnectionClosedError as e:
-            logger.warning(f"发送音频时连接异常关闭: {e}")
-            await self._handle_connection_loss(f"发送音频失败: {e.code} {e.reason}")
+            logger.warning(t('发送音频时连接异常关闭: {value1}', value1=e))
+            await self._handle_connection_loss(t('发送音频失败: {value1} {value3}', value1=e.code, value3=e.reason))
         except Exception as e:
-            logger.error(f"发送音频数据失败: {e}", exc_info=True)
-            # 不要在这里调用网络错误回调，让连接处理器处理
-            await self._handle_connection_loss(f"发送音频异常: {str(e)}")
+            logger.error(t('发送音频数据失败: {value1}', value1=e), exc_info=True)
+            # Do not call the network error callback here, let the connection processor handle it
+            await self._handle_connection_loss(t('发送音频异常: {value1}', value1=str(e)))
 
     async def send_text(self, message: str):
         """
-        发送文本消息.
+        Send text message.
         """
         if not self.websocket or self._is_closing:
-            logger.warning("WebSocket未连接或正在关闭，无法发送消息")
+            logger.warning(t("WebSocket未连接或正在关闭，无法发送消息"))
             return
 
         try:
@@ -289,58 +290,58 @@ class WebsocketProtocol(Protocol):
         except Exception:
             close_code = None
         if close_code is not None:
-            # 1000/1001/1005 视为正常关闭（服务端收回会话）
+            # 1000/1001/1005 is considered a normal shutdown (the server takes back the session)
             clean = close_code in (1000, 1001, 1005)
             logger.log(
                 logging.INFO if clean else logging.WARNING,
-                f"WebSocket 已关闭 (code={close_code})，跳过发送文本",
+                t('WebSocket 已关闭 (code={value1})，跳过发送文本', value1=close_code),
             )
             if self.connected:
                 await self._handle_connection_loss(
-                    f"发送文本失败: 连接已关闭 {close_code}", clean=clean
+                    t('发送文本失败: 连接已关闭 {value1}', value1=close_code), clean=clean
                 )
             return
 
         try:
             await self.websocket.send(message)
         except websockets.ConnectionClosedOK as e:
-            # 服务端正常收回会话，不算网络错误
-            logger.info(f"发送文本时连接已由服务端正常关闭: {e}")
+            # The server recovers the session normally, which does not count as a network error
+            logger.info(t('发送文本时连接已由服务端正常关闭: {value1}', value1=e))
             if self.connected and not self._is_closing:
                 await self._handle_connection_loss(
-                    f"发送文本时服务端关闭: {e.code}", clean=True
+                    t('发送文本时服务端关闭: {value1}', value1=e.code), clean=True
                 )
         except websockets.ConnectionClosedError as e:
-            logger.warning(f"发送文本时连接异常关闭: {e}")
+            logger.warning(t('发送文本时连接异常关闭: {value1}', value1=e))
             if self.connected and not self._is_closing:
                 await self._handle_connection_loss(
-                    f"发送文本错误: {e.code} {e.reason}"
+                    t('发送文本错误: {value1} {value3}', value1=e.code, value3=e.reason)
                 )
         except Exception as e:
-            logger.error(f"发送文本消息失败: {e}", exc_info=True)
+            logger.error(t('发送文本消息失败: {value1}', value1=e), exc_info=True)
             if self.connected and not self._is_closing:
-                await self._handle_connection_loss(f"发送文本异常: {str(e)}")
+                await self._handle_connection_loss(t('发送文本异常: {value1}', value1=str(e)))
 
     def is_audio_channel_opened(self) -> bool:
-        """检查音频通道是否打开.
+        """Check whether the audio channel is open.
 
-        更准确地检查连接状态，包括WebSocket的实际状态
+        More accurately checks connection status, including the actual status of WebSocket
         """
         if not self.websocket or not self.connected or self._is_closing:
             return False
 
-        # 检查WebSocket的实际状态
+        # Check the actual status of WebSocket
         try:
             return self.websocket.close_code is None
         except Exception:
             return False
 
     async def open_audio_channel(self) -> bool:
-        """建立 WebSocket 连接.
+        """to establish a WebSocket connection.
 
-        如果尚未连接,则创建新的 WebSocket 连接
+        creates a new WebSocket if not already connected Connect
         Returns:
-            bool: 连接是否成功
+            bool: Whether the connection is successful
         """
         if not self.is_audio_channel_opened():
             return await self.connect()
@@ -348,48 +349,48 @@ class WebsocketProtocol(Protocol):
 
     async def _handle_server_hello(self, data: dict):
         """
-        处理服务器的 hello 消息.
+        handles the server's hello message.
         """
         try:
-            # 验证传输方式
+            # Verify transmission method
             transport = data.get("transport")
             if not transport or transport != "websocket":
-                logger.error(f"不支持的传输方式: {transport}")
+                logger.error(t('不支持的传输方式: {value1}', value1=transport))
                 return
 
-            # 设置 hello 接收事件
+            # Set hello Receive event
             self.hello_received.set()
 
-            # 通知音频通道已打开
+            # notifies that the audio channel is open
             if self._on_audio_channel_opened:
                 await self._on_audio_channel_opened()
 
-            logger.info("成功处理服务器 hello 消息")
+            logger.info(t("成功处理服务器 hello 消息"))
 
         except Exception as e:
-            logger.error(f"处理服务器 hello 消息时出错: {e}", exc_info=True)
+            logger.error(t('处理服务器 hello 消息时出错: {value1}', value1=e), exc_info=True)
             if self._on_network_error:
-                await self._on_network_error(f"处理服务器响应失败: {str(e)}")
+                await self._on_network_error(t('处理服务器响应失败: {value1}', value1=str(e)))
 
     async def close_audio_channel(self):
         """
-        关闭音频通道.
+        Close the audio channel.
         """
         self._is_closing = True
 
         try:
             self.connected = False
 
-            # 取消连接监控任务（基类管理）
+            # Cancel the connection monitoring task (base class management)
             await self._cancel_monitor_task()
 
-            # 协议特定清理
+            # Protocol-specific cleanup
             await self._do_cleanup()
 
             if self._on_audio_channel_closed:
                 await self._on_audio_channel_closed()
 
         except Exception as e:
-            logger.error(f"关闭音频通道失败: {e}", exc_info=True)
+            logger.error(t('关闭音频通道失败: {value1}', value1=e), exc_info=True)
         finally:
             self._is_closing = False

@@ -3,6 +3,8 @@ import logging
 import sys
 from pathlib import Path
 
+from src.i18n import t
+
 from .filters import (
     DuplicateFilter,
     SensitiveDataFilter,
@@ -14,29 +16,29 @@ from .log_handlers import (
     TimeSizeRotatingFileHandler,
 )
 
-# 模块版本
+# Module version
 __version__ = "1.0.0"
 
-# 日志系统是否已初始化
+# Whether the log system has been initialized
 _initialized = False
 
-# 导出的公共接口
+# Exported public interface
 __all__ = [
-    # 主要函数
+    # The main function
     "setup_logging",
     "get_logger",
     "shutdown_logging",
-    # 配置
+    # Configuration
     "LoggingConfig",
     "load_logging_config",
-    # 过滤器
+    # Filter
     "SensitiveDataFilter",
     "DuplicateFilter",
-    # 格式化器
+    # Formatter
     "ColoredFormatter",
     "JsonFormatter",
     "SimpleFormatter",
-    # 处理器
+    # Processor
     "TimeSizeRotatingFileHandler",
     "AsyncHandler",
 ]
@@ -52,28 +54,28 @@ def setup_logging(
     enable_sensitive_filter: bool = True,
     config: LoggingConfig | None = None,
 ) -> Path | None:
-    """初始化日志系统.
+    """initializes the logging system.
 
     Args:
-        level: 日志级别，默认根据环境自动设置
-        log_dir: 日志目录，默认为项目根目录下的 logs
-        enable_console: 是否启用控制台输出
-        enable_file: 是否启用文件输出
-        enable_json: 是否启用 JSON 格式的文件输出
-        enable_async: 是否启用异步日志
-        enable_sensitive_filter: 是否启用敏感信息过滤
-        config: 自定义配置对象
+        level: Log level, automatically set according to the environment by default
+        log_dir: Log directory, the default is logs in the project root directory
+        enable_console: Whether to enable console output
+        enable_file: Whether to enable file output
+        enable_json: Whether to enable file output in JSON format
+        enable_async: Whether to enable asynchronous logging
+        enable_sensitive_filter: Whether to enable sensitive information filtering
+        config: Custom configuration object
 
     Returns:
-        日志文件路径（如果启用了文件输出）
+        Log file path (if file output is enabled)
     """
     global _initialized
 
-    # 获取或创建配置（无 LoggingConfigManager 单例）
+    # Get or create the configuration (without LoggingConfigManager Singleton)
     if config is None:
         config = load_logging_config()
 
-    # 应用参数覆盖
+    # Apply parameter override
     if level:
         config.level = level.upper()
     if log_dir:
@@ -84,31 +86,31 @@ def setup_logging(
     config.enable_async = enable_async
     config.enable_sensitive_filter = enable_sensitive_filter
 
-    # 确保日志目录存在
+    # Make sure the log directory exists
     if config.log_dir:
         config.log_dir.mkdir(parents=True, exist_ok=True)
 
-    # 获取根日志记录器
+    # Get the root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, config.level, logging.INFO))
 
-    # 清除已有的处理器
+    # Clear existing processors
     if root_logger.handlers:
         for handler in root_logger.handlers[:]:
             handler.close()
             root_logger.removeHandler(handler)
 
     def _make_filters() -> list[logging.Filter]:
-        """每个 handler 需要独立的 filter 实例，避免共享状态导致日志丢失."""
+        """Each handler needs to be independent filter instance to avoid log loss caused by shared state."""
         result: list[logging.Filter] = [DuplicateFilter(suppress_seconds=3.0)]
         if config.enable_sensitive_filter:
             result.append(SensitiveDataFilter(patterns=config.sensitive_patterns))
         return result
 
-    # 创建处理器列表
+    # creates the processor list
     handlers: list[logging.Handler] = []
 
-    # 控制台处理器
+    # Console handler
     if config.enable_console:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(getattr(logging, config.level, logging.INFO))
@@ -123,7 +125,7 @@ def setup_logging(
             console_handler.addFilter(f)
         handlers.append(console_handler)
 
-    # 文件处理器
+    # File handler
     log_file = None
     if config.enable_file and config.log_dir:
         log_file = config.log_dir / config.log_file
@@ -147,7 +149,7 @@ def setup_logging(
             file_handler.addFilter(f)
         handlers.append(file_handler)
 
-    # 错误日志文件处理器
+    # Error log file processor
     if config.enable_error_file and config.log_dir:
         error_file = config.log_dir / config.error_log_file
 
@@ -170,7 +172,7 @@ def setup_logging(
             error_handler.addFilter(f)
         handlers.append(error_handler)
 
-    # JSON 文件处理器
+    # JSON file processor
     if config.enable_json_file and config.log_dir:
         json_file = config.log_dir / "app.json.log"
 
@@ -188,7 +190,7 @@ def setup_logging(
             json_handler.addFilter(f)
         handlers.append(json_handler)
 
-    # 使用异步处理器包装
+    # uses an asynchronous processor to wrap
     if config.enable_async and handlers:
         async_handler = AsyncHandler(handlers)
         root_logger.addHandler(async_handler)
@@ -196,7 +198,7 @@ def setup_logging(
         for handler in handlers:
             root_logger.addHandler(handler)
 
-    # 设置第三方库日志级别
+    # Set third-party library log level
     for module_name, level_str in config.third_party_levels.items():
         logging.getLogger(module_name).setLevel(
             getattr(logging, level_str, logging.WARNING)
@@ -204,30 +206,30 @@ def setup_logging(
 
     _initialized = True
 
-    # 记录日志系统初始化完成
+    # Logging system initialization completed
     logger = logging.getLogger(__name__)
-    logger.info("日志系统已初始化")
+    logger.info(t("日志系统已初始化"))
     if log_file:
-        logger.debug(f"日志文件: {log_file}")
+        logger.debug(t('日志文件: {value1}', value1=log_file))
 
     return log_file
 
 
 def get_logger(name: str | None = None) -> logging.Logger:
-    """获取配置好的日志记录器.
+    """Get the configured logger.
 
     Args:
-        name: 日志记录器名称。如果不传，自动使用调用者的模块名。
+        name: Logger name. If not passed, the caller's module name is automatically used.
 
     Returns:
-        配置好的日志记录器
+        Configured logger
 
-    示例:
-        logger = get_logger()  # 自动注入模块名
-        logger = get_logger("custom.name")  # 自定义名称
+    Example:
+        logger = get_logger()
+        logger = get_logger("custom.name")
     """
     if name is None:
-        # 自动获取调用者的模块名
+        # Automatically get the caller's module name
         frame = inspect.currentframe()
         if frame and frame.f_back:
             name = frame.f_back.f_globals.get("__name__", "__main__")
@@ -236,7 +238,7 @@ def get_logger(name: str | None = None) -> logging.Logger:
 
     logger = logging.getLogger(name)
 
-    # 如果日志系统未初始化，添加一个基本的控制台处理器
+    # If the logging system is not initialized, add a basic console handler
     if not _initialized and not logger.handlers and not logging.root.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(
@@ -249,9 +251,9 @@ def get_logger(name: str | None = None) -> logging.Logger:
 
 
 def shutdown_logging() -> None:
-    """关闭日志系统，清理资源.
+    """to close the log system and clean up resources.
 
-    在应用退出时调用，确保所有日志都被写入。
+    is called when the application exits to ensure that all logs are written.
     """
     global _initialized
 

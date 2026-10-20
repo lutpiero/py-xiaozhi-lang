@@ -74,6 +74,7 @@ py-xiaozhi is a lightweight, cross-platform multi-modal AI interaction framework
 - **MCP Tool Ecosystem** — Modular JSON-RPC 2.0 tool server: music player, camera, screenshot, app management, weather, volume control
 - **Cross-platform Deployment** — Windows 10+ / macOS 10.15+ / Linux (x86_64 & ARM), optimized for Raspberry Pi and edge boards
 - **Multiple UI Modes** — PySide6 + QML GUI / CLI / GPIO, adapting to desktop, headless server, and embedded environments
+- **Localization** — Simplified Chinese and English UI/log catalogs, selectable in settings, with `--lang` and `XIAOZHI_LANG` overrides
 - **Offline Wake Word** — Sherpa-ONNX based on-device keyword spotting with custom wake word support
 - **IoT & Embodied AI Ready** — GPIO interface for robotics control, hardware actuation, and sensor integration
 - **WebSocket / MQTT** — Dual protocol communication with WSS/TLS encrypted transmission and auto-reconnection

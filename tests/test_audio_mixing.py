@@ -1,7 +1,7 @@
-"""TTS/音乐分队列混音回归测试.
+"""TTS/music queue mixing regression test.
 
-覆盖：PcmFifo 采样级语义、_pull_mixed 混音/闪避/削波。
-背景：TTS 与音乐曾共用一条 FIFO，逐句 TTS 时帧交错导致"同时播放+断续"。
+covers: PcmFifo sample-level semantics, _pull_mixed mixing/duck/clipping.
+Background: TTS and music once shared a FIFO, and the TTS time frames were interleaved sentence by sentence, resulting in "intermittent playback at the same time".
 """
 
 import numpy as np
@@ -49,7 +49,7 @@ class TestPcmFifo:
         assert f.size == 1000
         assert f.dropped == 200
         out = f.pull(1000)
-        # 最旧的 200 个 0 被丢掉，剩 400 个 0 + 600 个 1
+        # The oldest 200 0 Discarded, leaving 400 0 600 1
         assert np.all(out[:400] == 0)
         assert np.all(out[400:] == 1)
 
@@ -92,7 +92,7 @@ class TestMixing:
 
     def test_duck_hangover_then_recover(self, codec):
         n = codec._mix_chunk
-        # 一次 TTS 后，音乐在 hangover 期内仍闪避
+        # After one TTS, the music still evades during the hangover period
         codec._tts_fifo.push(np.full(n, 0.5, dtype=np.float32))
         codec._music_fifo.push(np.full(n, 0.4, dtype=np.float32))
         codec._pull_mixed(n)
@@ -101,7 +101,7 @@ class TestMixing:
         out = codec._pull_mixed(n)
         assert np.allclose(out, _MUSIC_DUCK_GAIN * 0.4)
 
-        # hangover 耗尽后恢复全量
+        # hangover restores the full volume after exhaustion
         for _ in range(15):
             codec._music_fifo.push(np.full(n, 0.4, dtype=np.float32))
             out = codec._pull_mixed(n)
@@ -122,5 +122,5 @@ class TestMixing:
         codec._tts_fifo.push(np.full(n, 0.5, dtype=np.float32))
         codec._music_fifo.push(np.full(n, 0.4, dtype=np.float32))
         codec._tts_fifo.clear()
-        # TTS 清空不影响音乐
+        # TTS clearing does not affect the music
         assert codec._music_fifo.size == n

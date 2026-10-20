@@ -1,9 +1,9 @@
-"""UI 模块：gui / cli / gpio 三种界面.
+"""UI module: gui/cli/gpio three interfaces.
 
-按需导入，避免跨模式依赖：
+import on demand to avoid cross-mode dependencies:
     from src.ui.gui import GuiViewManager
     from src.ui.cli import CliViewManager
-    from src.ui.gpio import GpioViewManager  # 仅 Linux
+    from src.ui.gpio import GpioViewManager
     from src.ui.shared import ViewPort, create_viewport
 """
 

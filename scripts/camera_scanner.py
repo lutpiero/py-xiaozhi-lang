@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""检测可用摄像头（OpenCV/V4L2 + 可选 picamera2），并写回 CAMERA 配置."""
+"""Detect available cameras (optional picamera2 for OpenCV/V4L2) and write back the CAMERA configuration."""
 
 import argparse
 import logging
 import sys
 from pathlib import Path
 
-# 添加项目根目录
+# Add the project root directory
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -99,7 +99,7 @@ def main() -> int:
         print("\n===== 试拍 =====")
         cfg = load_capture_config()
         if selected_key is not None:
-            # 用刚写入的选择
+            # with the selection just written
             u = apply_device_selection(selected_key)
             if args.backend:
                 u["CAMERA.backend"] = args.backend

@@ -1,10 +1,11 @@
-"""外挂 MCP 插件运行时注册表：归属索引与卸载."""
+"""Plug-in MCP plug-in runtime registry: ownership index and uninstallation."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from src.i18n import t
 from src.logging import get_logger
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ logger = get_logger()
 
 @dataclass
 class PluginRegistry:
-    """记录外挂 tool_name -> plugin_id，支持按 id 从 McpServer 卸工具."""
+    """Record plug-in tool_name -> plugin_id, support uninstalling tools from McpServer by id."""
 
     tool_owner: dict[str, str] = field(default_factory=dict)
 
@@ -27,7 +28,7 @@ class PluginRegistry:
         return [n for n, p in self.tool_owner.items() if p == plugin_id]
 
     def unload_plugin(self, server: "McpServer", plugin_id: str) -> int:
-        """从 server.tools 移除该插件注册的工具；返回移除数量."""
+        """Remove the tool registered by the plug-in from server.tools; return the number of removals."""
         try:
             from src.mcp.plugins.subprocess_runtime import drop_session
 
@@ -36,7 +37,7 @@ class PluginRegistry:
             pass
         names = set(self.tools_for_plugin(plugin_id))
         if not names:
-            logger.info("[MCP插件] 卸载 %s：无已注册工具", plugin_id)
+            logger.info(t("[MCP插件] 卸载 %s：无已注册工具"), plugin_id)
             return 0
         before = len(server.tools)
         server.tools = [t for t in server.tools if t.name not in names]
@@ -44,7 +45,7 @@ class PluginRegistry:
         for n in names:
             self.tool_owner.pop(n, None)
         logger.info(
-            "[MCP插件] 已卸载 %s：移除 %d 个工具 %s",
+            t("[MCP插件] 已卸载 %s：移除 %d 个工具 %s"),
             plugin_id,
             removed,
             sorted(names),
@@ -55,7 +56,7 @@ class PluginRegistry:
         self.tool_owner.clear()
 
 
-# 进程内可选共享（由 McpServer 持有更清晰；此处供简单场景）
+# In-process optional sharing (by McpServer holds clearer; simple scenario here)
 _default_registry: PluginRegistry | None = None
 
 

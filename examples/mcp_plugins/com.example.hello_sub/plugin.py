@@ -1,4 +1,4 @@
-"""示例外挂：python-subprocess runtime."""
+"""Example plug-in: python-subprocess runtime."""
 
 
 def register(host):

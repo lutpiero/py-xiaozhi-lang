@@ -1,19 +1,19 @@
 """
-统一资源路径解析器 - 开发/打包通用
+Uniform resource path parser - development/packaging general
 
-默认用户数据目录（platformdirs）：
+Default user data directory (platformdirs):
 - Windows: C:/Users/xxx/AppData/Local/{app_name}/
-- macOS:   ~/Library/Application Support/{app_name}/
-- Linux:   ~/.local/share/{app_name}/
+- macOS: ~/Library/Application Support/{app_name}/
+- Linux: ~/.local/share/{app_name}/
 
-默认子目录：config/ cache/ logs/ keywords/ mcp_plugins/
+Default subdirectory: config/ cache/ logs/ keywords/ mcp_plugins/
 
-可覆盖（config 目录建议保持默认；其它可迁）：
-- 环境变量：XIAOZHI_DATA_DIR / XIAOZHI_CACHE_DIR / XIAOZHI_LOG_DIR /
+(it is recommended to keep the config directory as default; others can be migrated):
+- Environment variables: XIAOZHI_DATA_DIR / XIAOZHI_CACHE_DIR / XIAOZHI_LOG_DIR /
   XIAOZHI_MUSIC_CACHE_DIR / XIAOZHI_KEYWORDS_DIR
-- 配置 PATHS.*（见 apply_path_overrides_from_config；改后可迁移旧目录）
+- Configuration PATHS.* (see apply_path_overrides_from_config; the old directory can be migrated after changing it)
 
-核心 API：
+Core API:
 - get_app_root() / get_app_name()
 - get_user_data_dir() / get_user_cache_dir() / get_user_log_dir()
 - get_music_cache_dir() / get_keywords_dir()
@@ -32,15 +32,16 @@ from pathlib import Path
 import platformdirs
 
 from src.constants.system import SystemConstants
+from src.i18n import t
 
-# 环境变量名
+# Environment variable name
 ENV_DATA_DIR = "XIAOZHI_DATA_DIR"
 ENV_CACHE_DIR = "XIAOZHI_CACHE_DIR"
 ENV_LOG_DIR = "XIAOZHI_LOG_DIR"
 ENV_MUSIC_CACHE_DIR = "XIAOZHI_MUSIC_CACHE_DIR"
 ENV_KEYWORDS_DIR = "XIAOZHI_KEYWORDS_DIR"
 
-# 运行时覆盖（config 加载后 apply；env 优先于这些）
+# Runtime coverage (apply after config is loaded; env takes precedence over these)
 _override_cache: Path | None = None
 _override_log: Path | None = None
 _override_music: Path | None = None
@@ -56,31 +57,31 @@ def _env_path(name: str) -> Path | None:
 
 @lru_cache(maxsize=1)
 def get_app_root() -> Path:
-    """应用根目录（开发/打包通用）
+    """Application root directory (common for development/packaging)
 
-    - 开发时: 项目根目录
-    - 打包后: _MEIPASS（PyInstaller onedir）
+    - During development: project root directory
+    - After packaging: _MEIPASS (PyInstaller onedir)
     """
     if getattr(sys, "frozen", False):
         return Path(sys._MEIPASS)
-    # src/utils/resource_finder.py → 往上 3 级
+    # src/utils/resource_finder.py → Go up 3 levels
     return Path(__file__).resolve().parent.parent.parent
 
 
 def get_app_name() -> str:
-    """获取应用名称（固定值）
+    """Get the application name (fixed value)
 
-    从 SystemConstants.APP_NAME 获取，确保一致性。
+    is obtained from SystemConstants.APP_NAME to ensure consistency.
     """
     return SystemConstants.APP_NAME
 
 
 @lru_cache(maxsize=1)
 def get_user_data_dir() -> Path:
-    """用户数据目录（可写：默认含 config/）
+    """User data directory (writable: config/ is included by default)
 
-    优先环境变量 XIAOZHI_DATA_DIR，否则 platformdirs。
-    配置文件建议始终在此目录下的 config/，保证能读到 PATHS 覆盖项。
+    takes precedence over the environment variable XIAOZHI_DATA_DIR, otherwise platformdirs.
+    The configuration file is recommended to always be in config/ in this directory to ensure that the PATHS coverage items can be read.
     """
     env = _env_path(ENV_DATA_DIR)
     if env is not None:
@@ -92,7 +93,7 @@ def get_user_data_dir() -> Path:
 
 
 def get_user_cache_dir() -> Path:
-    """缓存目录：XIAOZHI_CACHE_DIR > 运行时覆盖 > {data}/cache."""
+    """Cache directory: XIAOZHI_CACHE_DIR > Runtime coverage > {data}/cache."""
     env = _env_path(ENV_CACHE_DIR)
     if env is not None:
         p = env
@@ -105,7 +106,7 @@ def get_user_cache_dir() -> Path:
 
 
 def get_user_log_dir() -> Path:
-    """日志目录：XIAOZHI_LOG_DIR > 运行时覆盖 > {data}/logs."""
+    """Log directory: XIAOZHI_LOG_DIR > Runtime coverage > {data}/logs."""
     env = _env_path(ENV_LOG_DIR)
     if env is not None:
         p = env
@@ -118,12 +119,12 @@ def get_user_log_dir() -> Path:
 
 
 def get_log_dir() -> Path:
-    """日志目录（用户数据目录下，打包后可写）."""
+    """log directory (under the user data directory, writable after packaging)."""
     return get_user_log_dir()
 
 
 def get_music_cache_dir() -> Path:
-    """音乐缓存：XIAOZHI_MUSIC_CACHE_DIR > 覆盖 > {cache}/music."""
+    """Music cache: XIAOZHI_MUSIC_CACHE_DIR > Overwrite > {cache}/music."""
     env = _env_path(ENV_MUSIC_CACHE_DIR)
     if env is not None:
         p = env
@@ -136,7 +137,7 @@ def get_music_cache_dir() -> Path:
 
 
 def get_keywords_dir() -> Path:
-    """唤醒词目录：XIAOZHI_KEYWORDS_DIR > 覆盖 > {data}/keywords."""
+    """Wake-up word directory: XIAOZHI_KEYWORDS_DIR > Overwrite > {data}/keywords."""
     env = _env_path(ENV_KEYWORDS_DIR)
     if env is not None:
         p = env
@@ -149,7 +150,7 @@ def get_keywords_dir() -> Path:
 
 
 def clear_path_caches() -> None:
-    """清除 get_user_data_dir 等 lru 缓存（测试或 DATA_DIR 变更后）."""
+    """Clear get_user_data_dir and other lru caches (test or DATA_DIR After change)."""
     get_user_data_dir.cache_clear()
     get_app_root.cache_clear()
 
@@ -161,10 +162,10 @@ def migrate_directory(
     copy: bool = True,
     skip_dir_names: set[str] | frozenset[str] | None = None,
 ) -> dict:
-    """将旧目录内容复制到新目录（默认不删除源，安全）.
+    """Copy the contents of the old directory to the new directory (the source is not deleted by default, safe).
 
-    skip_dir_names: 顶层（相对 src）目录名集合，整棵子树跳过不拷
-        （例如 cache 迁移时 music 已单独配置则跳过 music/）。
+    skip_dir_names: A collection of top-level (relative to src) directory names, the entire subtree is skipped without copying
+        (for example, if music is configured separately during cache migration, music/ will be skipped).
 
     Returns:
         {ok, src, dst, files_copied, error?}
@@ -191,11 +192,11 @@ def migrate_directory(
         count = 0
         for root, dirs, files in os.walk(src):
             rel = Path(root).relative_to(src)
-            # 顶层目录过滤：os.walk 可改 dirs in-place
+            # Top-level directory filtering: os.walk can change dirs in-place
             if rel == Path("."):
                 dirs[:] = [d for d in dirs if d not in skip]
             else:
-                # 若相对路径第一段在 skip 中（防御）
+                # If the first segment of the relative path is in skip (defense)
                 if rel.parts and rel.parts[0] in skip:
                     dirs[:] = []
                     continue
@@ -205,7 +206,7 @@ def migrate_directory(
                 s = Path(root) / name
                 d = target_root / name
                 if d.exists():
-                    continue  # 不覆盖已有
+                    continue  # does not overwrite existing
                 if copy:
                     shutil.copy2(s, d)
                 else:
@@ -223,12 +224,12 @@ def apply_path_overrides_from_config(
     *,
     migrate: bool = True,
 ) -> list[dict]:
-    """从 ConfigManager 读取 PATHS，设置运行时覆盖，并可选迁移旧目录.
+    """read from ConfigManager PATHS, sets runtime overrides, and optionally migrates old directories.
 
-    环境变量始终优先于配置。config 目录不由此迁移。
+    Environment variables always take precedence over configuration. The config directory is not migrated by this.
 
     Returns:
-        迁移结果列表（便于 UI/日志）
+        Migration result list (convenient for UI/logging)
     """
     global _override_cache, _override_log, _override_music, _override_keywords
 
@@ -243,7 +244,7 @@ def apply_path_overrides_from_config(
             return None
         return str(v).strip()
 
-    # 当前有效路径（应用覆盖前）作为迁移源
+    # Current effective path (before application overwriting) as the migration source
     old_cache = get_user_cache_dir()
     old_log = get_user_log_dir()
     old_music = get_music_cache_dir()
@@ -254,7 +255,7 @@ def apply_path_overrides_from_config(
     music_s = _cfg("PATHS.MUSIC_CACHE_DIR")
     kw_s = _cfg("PATHS.KEYWORDS_DIR")
 
-    # 仅当 env 未设时应用 config 覆盖
+    # applies config only when env is not set Overwrite
     if _env_path(ENV_CACHE_DIR) is None:
         _override_cache = Path(cache_s).expanduser().resolve() if cache_s else None
     if _env_path(ENV_LOG_DIR) is None:
@@ -272,18 +273,18 @@ def apply_path_overrides_from_config(
     new_music = get_music_cache_dir()
     new_kw = get_keywords_dir()
 
-    # cache 迁移时：若 music 已单独指到其它目录（或即将单独迁），跳过 cache/music 子树
+    # cache When migrating: If music has been pointed to other directories separately (or will be migrated separately), skip the cache/music subtree
     cache_skip: set[str] = set()
     try:
         music_under_old_cache = old_music.resolve() == (old_cache / "music").resolve()
         music_stays_default_under_new = new_music.resolve() == (
             new_cache / "music"
         ).resolve()
-        # 旧 music 在 cache 下，但新 music 不是「新 cache/music」→ 由 music 项单独迁，cache 勿再拷
+        # The old music is in the cache, but the new music is not "new cache/music" → Migrate the music item separately, do not copy the cache again
         if music_under_old_cache and not music_stays_default_under_new:
             cache_skip.add("music")
-        # 即使 music 仍默认挂 cache：若 old→new cache 会先拷 music，再 music 对 同内容
-        # 一般 ok；仅当 music 路径显式独立时跳过
+        # Even if music is still cached by default: if old→new cache will copy music first, and then music can be overwritten with the same content
+        # generally ok; only skipped when music path is explicitly independent
     except Exception:
         pass
 
@@ -321,7 +322,7 @@ def _log_migration(kind: str, src: Path, dst: Path, r: dict) -> None:
         from src.logging import get_logger
 
         get_logger().info(
-            "路径迁移 %s: %s -> %s (copied=%s, ok=%s)",
+            t("路径迁移 %s: %s -> %s (copied=%s, ok=%s)"),
             kind,
             src,
             dst,
@@ -339,11 +340,11 @@ def set_path_overrides(
     music: Path | str | None | object = ...,
     keywords: Path | str | None | object = ...,
 ) -> None:
-    """测试或编程方式设置覆盖（env 仍优先）.
+    """Test or programmatically set overrides (env still takes precedence).
 
-    - 不传某参数：保持该覆盖不变
-    - 传路径字符串/Path：设置覆盖
-    - 显式传 None：清除该覆盖（恢复默认/仅 env）
+    - Do not pass a certain parameter: keep the coverage unchanged
+    - Pass the path string/Path: set the coverage
+    - Pass None explicitly: clear this override (restore default/env only)
     """
     global _override_cache, _override_log, _override_music, _override_keywords
 
@@ -370,7 +371,7 @@ def clear_path_overrides(
     keywords: bool = False,
     all: bool = False,
 ) -> None:
-    """清除运行时路径覆盖（测试或恢复默认）."""
+    """Clear runtime path coverage (test or restore default)."""
     global _override_cache, _override_log, _override_music, _override_keywords
     if all or cache:
         _override_cache = None
@@ -384,13 +385,13 @@ def clear_path_overrides(
 
 @lru_cache(maxsize=1)
 def get_platform_info() -> tuple[str, str]:
-    """获取平台和架构信息.
+    """gets the platform and architecture information.
 
     Returns:
-        (platform_dir, arch_dir) 如 ("mac", "arm64") / ("win", "x64")
+        (platform_dir, arch_dir) such as ("mac", "arm64") / ("win", "x64")
     """
     machine = plat.machine().lower()
-    # Windows ARM 常见为 ARM64；部分环境仅环境变量可靠
+    # Windows ARM is commonly ARM64; in some environments, only environment variables are reliable
     env_arch = (os.environ.get("PROCESSOR_ARCHITECTURE") or "").lower()
     env_arch_w6432 = (os.environ.get("PROCESSOR_ARCHITEW6432") or "").lower()
     is_arm = any(
@@ -408,25 +409,25 @@ def get_platform_info() -> tuple[str, str]:
 
 
 def get_lib_path(lib_name: str) -> Path | None:
-    """获取动态库路径.
+    """gets the dynamic library path.
 
     Args:
-        lib_name: 库名，如 "libopus", "webrtc_apm"
+        lib_name: library name, such as "libopus", "webrtc_apm"
 
     Returns:
-        库文件的完整路径，找不到返回 None
+        The full path of the library file, if not found, returns None
     """
     plat_dir, arch = get_platform_info()
     root = get_app_root() / "libs" / lib_name
 
-    # 平台目录别名（mac/macos, win/windows）
+    # Platform directory alias (mac/macos, win/windows)
     plat_aliases = {
         "mac": ["mac", "macos"],
         "win": ["win", "windows"],
         "linux": ["linux"],
     }
 
-    # 扩展名与优先文件名（避免目录里多个候选时捡错）
+    # Extension and priority file name (to avoid errors when there are multiple candidates in the directory)
     ext_map = {"mac": ".dylib", "win": ".dll", "linux": ".so"}
     ext = ext_map.get(plat_dir, ".so")
     preferred_names = {
@@ -448,18 +449,18 @@ def get_lib_path(lib_name: str) -> Path | None:
         if not lib_dir.is_dir():
             continue
 
-        # 1) 精确优先名
+        # 1) Precise priority name
         for pname in prefer:
             cand = lib_dir / pname
             if cand.is_file():
                 return cand
 
-        # 2) 回退：按扩展名，优先「短名字 / 无多余后缀」
+        # 2) Fallback: According to extension, priority is "short name / no redundant suffix"
         candidates: list[Path] = []
         for f in lib_dir.iterdir():
             if not f.is_file():
                 continue
-            # 跳过说明文件
+            # Skip the description file
             if f.suffix.lower() in {".txt", ".md", ".json"}:
                 continue
             if f.suffix == ext or ext in f.name:
@@ -474,16 +475,16 @@ def get_lib_path(lib_name: str) -> Path | None:
 
 def get_lib_dir(lib_name: str) -> Path | None:
     """
-    获取动态库所在目录.
+    gets the directory where the dynamic library is located.
     """
     lib_path = get_lib_path(lib_name)
     return lib_path.parent if lib_path else None
 
 
 def get_ffmpeg_path() -> str:
-    """获取 ffmpeg 可执行文件路径.
+    """Get the ffmpeg executable file path.
 
-    搜索顺序：内置 libs/ffmpeg/ → 系统 PATH
+    Search order: built-in libs/ffmpeg/ → system PATH
     """
     import shutil
 
@@ -496,9 +497,9 @@ def get_ffmpeg_path() -> str:
 
 
 def get_ffprobe_path() -> str:
-    """获取 ffprobe 可执行文件路径.
+    """Get the ffprobe executable file path.
 
-    搜索顺序：内置 libs/ffmpeg/ → 系统 PATH
+    Search order: built-in libs/ffmpeg/ → system PATH
     """
     import shutil
 
@@ -512,35 +513,35 @@ def get_ffprobe_path() -> str:
 
 def get_models_dir() -> Path:
     """
-    模型目录（只读，安装目录内）.
+    Model directory (read-only, within the installation directory).
     """
     return get_app_root() / "models"
 
 
 def get_assets_dir() -> Path:
     """
-    资源目录（只读，安装目录内）.
+    Resource directory (read-only, within the installation directory).
     """
     return get_app_root() / "assets"
 
 
 def get_config_dir() -> Path:
     """
-    配置目录（应用内置，只读）
+    Configuration directory (built-in application, read-only)
     """
     return get_app_root() / "config"
 
 
 def get_user_keywords_path(lang: str) -> Path:
-    """获取 keywords 路径，始终使用用户目录
+    """Get the keywords path, always use the user directory
 
-    首次运行时自动从安装目录复制默认文件到用户目录。
+    Automatically copies default files from the installation directory to the user directory when running for the first time.
 
     Args:
-        lang: 语言代码，如 "zh" 或 "en"
+        lang: language code, such as "zh" or "en"
 
     Returns:
-        用户目录下的 keywords 文件路径
+        Keywords file path in the user directory
     """
     import shutil
 
@@ -548,7 +549,7 @@ def get_user_keywords_path(lang: str) -> Path:
     user_keywords = user_keywords_dir / f"{lang}_keywords.txt"
 
     if not user_keywords.exists():
-        # 从安装目录复制默认文件
+        # Copies the default files from the installation directory
         default_keywords = get_app_root() / "models" / lang / "keywords.txt"
         if default_keywords.exists():
             user_keywords_dir.mkdir(parents=True, exist_ok=True)

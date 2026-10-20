@@ -1,4 +1,4 @@
-// 唤醒词设置页
+// Wake word Setting page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -13,33 +13,33 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
-            text: "唤醒词设置"
+            text: i18n.t("唤醒词设置")
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
 
-        // 唤醒词设置
+        // Wake word settings
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "唤醒词"
+                text: i18n.t("唤醒词")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
             }
 
-            // 启用唤醒词
+            // Enable wake word
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "启用唤醒词"
+                    text: i18n.t("启用唤醒词")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                 }
@@ -58,13 +58,13 @@ ScrollView {
                 color: Theme.divider
             }
 
-            // 唤醒词输入
+            // Wake word input
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "唤醒词"
+                    text: i18n.t("唤醒词")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -75,7 +75,7 @@ ScrollView {
                     Layout.fillWidth: true
                     text: settingsModel ? settingsModel.wakeWord : ""
                     onTextChanged: if (settingsModel && text !== settingsModel.wakeWord) settingsModel.wakeWord = text
-                    placeholderText: "输入唤醒词，如「小智」或「Hey Jarvis」"
+                    placeholderText: i18n.t("输入唤醒词，如「小智」或「Hey Jarvis」")
                     font.pixelSize: Theme.fontSizeSm
                     background: Rectangle {
                         radius: Theme.radiusSm
@@ -84,7 +84,7 @@ ScrollView {
                     }
                 }
 
-                // 语言标签
+                // Language label
                 Rectangle {
                     visible: settingsModel && settingsModel.wakeWord && settingsModel.wakeWord.length > 0
                     width: langLabel.width + 16
@@ -95,14 +95,14 @@ ScrollView {
                     Text {
                         id: langLabel
                         anchors.centerIn: parent
-                        text: settingsModel && settingsModel.wakeWordLang === "zh" ? "中文" : "English"
+                        text: settingsModel && settingsModel.wakeWordLang === "zh" ? i18n.t("中文") : "English"
                         font.pixelSize: Theme.fontSizeXs
                         color: settingsModel && settingsModel.wakeWordLang === "zh" ? Theme.primary : Theme.success
                     }
                 }
             }
 
-            // 预览区域
+            // Preview area
             Rectangle {
                 Layout.fillWidth: true
                 height: previewLayout.height + 20
@@ -119,7 +119,7 @@ ScrollView {
                     spacing: Theme.spacingXs
 
                     Text {
-                        text: "转换预览"
+                        text: i18n.t("转换预览")
                         font.pixelSize: Theme.fontSizeXs
                         color: Theme.textPlaceholder
                     }
@@ -134,7 +134,7 @@ ScrollView {
                 }
             }
 
-            // 保存按钮
+            // Save button
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Theme.spacingMd
@@ -142,7 +142,7 @@ ScrollView {
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    text: "保存唤醒词"
+                    text: i18n.t("保存唤醒词")
                     implicitHeight: 36
                     implicitWidth: 120
 
@@ -165,20 +165,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 检测参数
+        // Detection parameters
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "检测参数"
+                text: i18n.t("检测参数")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -190,9 +190,9 @@ ScrollView {
                 rowSpacing: Theme.spacingMd
                 columnSpacing: Theme.spacingMd
 
-                // 线程数
+                // Number of threads
                 Text {
-                    text: "线程数"
+                    text: i18n.t("线程数")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -208,14 +208,14 @@ ScrollView {
                 }
 
                 Text {
-                    text: "建议设置为 CPU 核心数"
+                    text: i18n.t("建议设置为 CPU 核心数")
                     font.pixelSize: Theme.fontSizeXs
                     color: Theme.textPlaceholder
                 }
 
-                // 关键词得分
+                // Keyword score
                 Text {
-                    text: "关键词得分"
+                    text: i18n.t("关键词得分")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -238,9 +238,9 @@ ScrollView {
                     Layout.preferredWidth: 40
                 }
 
-                // 关键词阈值
+                // Keyword threshold
                 Text {
-                    text: "关键词阈值"
+                    text: i18n.t("关键词阈值")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -265,17 +265,17 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 提示信息
+        // Prompt message
         Text {
             Layout.fillWidth: true
-            text: "支持中文和英文唤醒词。中文会自动转换为拼音格式，英文使用 BPE 分词。得分越高越严格，阈值越低越敏感。"
+            text: i18n.t("支持中文和英文唤醒词。中文会自动转换为拼音格式，英文使用 BPE 分词。得分越高越严格，阈值越低越敏感。")
             font.pixelSize: Theme.fontSizeSm
             color: Theme.textPlaceholder
             wrapMode: Text.WordWrap

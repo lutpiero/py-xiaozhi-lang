@@ -1,9 +1,10 @@
-"""macOS 音量后端（applescript）."""
+"""macOS volume backend (applescript)."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from src.i18n import t
 from src.logging import get_logger
 
 logger = get_logger()
@@ -26,10 +27,10 @@ class MacosVolumeBackend:
             applescript = self._lazy_import("applescript")
             result = applescript.run("get volume settings")
             if not result or result.code != 0:
-                raise Exception("无法访问macOS音量控制")
-            logger.debug("macOS音量控制初始化成功")
+                raise Exception(t("无法访问macOS音量控制"))
+            logger.debug(t("macOS音量控制初始化成功"))
         except Exception as e:
-            logger.error(f"macOS音量控制初始化失败: {e}", exc_info=True)
+            logger.error(t('macOS音量控制初始化失败: {value1}', value1=e), exc_info=True)
             raise
 
     def get_volume(self) -> int:
@@ -40,7 +41,7 @@ class MacosVolumeBackend:
                 return int(result.out.strip())
             return DEFAULT_VOLUME
         except Exception as e:
-            logger.warning(f"获取macOS音量失败: {e}", exc_info=True)
+            logger.warning(t('获取macOS音量失败: {value1}', value1=e), exc_info=True)
             return DEFAULT_VOLUME
 
     def set_volume(self, volume: int) -> None:
@@ -48,4 +49,4 @@ class MacosVolumeBackend:
             applescript = self._lazy_import("applescript")
             applescript.run(f"set volume output volume {volume}")
         except Exception as e:
-            logger.warning(f"设置macOS音量失败: {e}", exc_info=True)
+            logger.warning(t('设置macOS音量失败: {value1}', value1=e), exc_info=True)

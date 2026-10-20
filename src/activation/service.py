@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""统一激活服务门面：组合 identity / ota / client / side_effects."""
+"""Unified activation service facade: combination identity / ota / client / side_effects."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from src.activation.client import ActivationHttpClient
 from src.activation.identity import DeviceIdentity
 from src.activation.ota import OtaConfigClient
 from src.activation.side_effects import announce_code, apply_code_side_effects
+from src.i18n import t
 from src.logging import get_logger
 from src.utils.config_manager import ConfigManager, get_config
 
@@ -17,7 +18,7 @@ logger = get_logger()
 
 
 class ActivationResult(TypedDict, total=False):
-    """激活结果类型."""
+    """Activation result type."""
 
     success: bool
     need_activation_ui: bool
@@ -30,7 +31,7 @@ class ActivationResult(TypedDict, total=False):
 
 
 class ActivationService:
-    """设备激活门面（由 create() 构造，非单例）."""
+    """Device activation facade (constructed by create(), non-singleton)."""
 
     def __init__(self) -> None:
         self.logger = get_logger()
@@ -63,20 +64,20 @@ class ActivationService:
         self._identity.ensure_efuse_file()
         await self._ota.ensure_local_ip()
         self._initialized = True
-        self.logger.info("ActivationService 初始化完成")
+        self.logger.info(t("ActivationService 初始化完成"))
 
-    # ---------- 公共接口 ----------
+    # ----------Public interface ----------
 
     async def initialize(self) -> ActivationResult:
-        self.logger.info("开始系统初始化流程")
+        self.logger.info(t("开始系统初始化流程"))
         try:
             serial_number, hmac_key, is_activated = (
                 self._identity.ensure_device_identity()
             )
             self._activation_status["local_activated"] = is_activated
-            self.logger.info(f"设备序列号: {serial_number}")
+            self.logger.info(t('设备序列号: {value1}', value1=serial_number))
             self.logger.info(
-                f"本地激活状态: {'已激活' if is_activated else '未激活'}"
+                t('本地激活状态: {value1}', value1=t('已激活') if is_activated else t('未激活'))
             )
 
             self._ota.initialize_config()
@@ -87,14 +88,14 @@ class ActivationService:
             activation_version = self.config_manager.get_config(
                 "SYSTEM_OPTIONS.NETWORK.ACTIVATION_VERSION", "v1"
             )
-            self.logger.info(f"激活版本: {activation_version}")
+            self.logger.info(t('激活版本: {value1}', value1=activation_version))
 
             if activation_version == "v1":
-                self.logger.info("v1协议：无需激活流程")
+                self.logger.info(t("v1协议：无需激活流程"))
                 return ActivationResult(
                     success=True,
                     need_activation_ui=False,
-                    message="v1协议初始化完成",
+                    message=t("v1协议初始化完成"),
                     local_activated=True,
                     server_activated=True,
                     status_consistent=True,
@@ -106,25 +107,25 @@ class ActivationService:
             return result
         except Exception as e:
             self.logger.error(
-                f"系统初始化失败: {type(e).__name__}: {e}", exc_info=True
+                t('系统初始化失败: {value1}: {value3}', value1=type(e).__name__, value3=e), exc_info=True
             )
             return ActivationResult(
                 success=False,
                 need_activation_ui=False,
-                message="初始化失败",
+                message=t("初始化失败"),
                 error=str(e),
             )
 
     async def activate(self, activation_data: Optional[Dict] = None) -> bool:
         data = activation_data or self._activation_data
         if not data:
-            self.logger.error("没有激活数据")
+            self.logger.error(t("没有激活数据"))
             return False
 
         challenge = data.get("challenge")
         code = data.get("code")
         if not challenge or not code:
-            self.logger.error("激活数据缺少必要字段")
+            self.logger.error(t("激活数据缺少必要字段"))
             return False
 
         try:
@@ -137,7 +138,7 @@ class ActivationService:
                 on_retry_announce=announce_code,
             )
         except asyncio.CancelledError:
-            self.logger.info("激活流程被取消")
+            self.logger.info(t("激活流程被取消"))
             return False
         finally:
             self._is_activating = False
@@ -145,7 +146,7 @@ class ActivationService:
 
     def cancel_activation(self) -> None:
         if self._activation_task and not self._activation_task.done():
-            self.logger.info("正在取消激活任务")
+            self.logger.info(t("正在取消激活任务"))
             self._activation_task.cancel()
 
     def get_device_info(self) -> Dict:
@@ -181,13 +182,13 @@ class ActivationService:
         server = self._activation_status["server_activated"]
         consistent = local == server
         self._activation_status["status_consistent"] = consistent
-        self.logger.info(f"激活状态分析: 本地={local}, 服务器={server}")
+        self.logger.info(t('激活状态分析: 本地={value1}, 服务器={value3}', value1=local, value3=server))
 
         if not local and not server:
             return ActivationResult(
                 success=True,
                 need_activation_ui=True,
-                message="设备需要激活",
+                message=t("设备需要激活"),
                 local_activated=local,
                 server_activated=server,
                 status_consistent=consistent,
@@ -196,29 +197,29 @@ class ActivationService:
             return ActivationResult(
                 success=True,
                 need_activation_ui=False,
-                message="设备已激活",
+                message=t("设备已激活"),
                 local_activated=local,
                 server_activated=server,
                 status_consistent=consistent,
             )
         if not local and server:
-            self.logger.warning("自动修复本地激活状态")
+            self.logger.warning(t("自动修复本地激活状态"))
             self._identity.set_activation_status(True)
             return ActivationResult(
                 success=True,
                 need_activation_ui=False,
-                message="已自动修复激活状态",
+                message=t("已自动修复激活状态"),
                 local_activated=True,
                 server_activated=server,
                 status_consistent=True,
             )
 
-        self.logger.warning("服务器取消授权，需要重新激活")
+        self.logger.warning(t("服务器取消授权，需要重新激活"))
         if self._activation_data and "code" in self._activation_data:
             return ActivationResult(
                 success=True,
                 need_activation_ui=True,
-                message="服务器取消授权，需要重新激活",
+                message=t("服务器取消授权，需要重新激活"),
                 local_activated=local,
                 server_activated=server,
                 status_consistent=consistent,
@@ -226,7 +227,7 @@ class ActivationService:
         return ActivationResult(
             success=True,
             need_activation_ui=False,
-            message="保持本地激活状态",
+            message=t("保持本地激活状态"),
             local_activated=local,
             server_activated=True,
             status_consistent=True,

@@ -1,4 +1,4 @@
-// 控制面板
+// Control panel
 import QtQuick
 import QtQuick.Layouts
 import "../theme"
@@ -14,7 +14,7 @@ Rectangle {
         anchors.margins: Theme.spacingMd
         spacing: Theme.spacingMd
 
-        // 输入区域
+        // Input area
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingSm
@@ -22,31 +22,31 @@ Rectangle {
             XTextField {
                 id: inputField
                 Layout.fillWidth: true
-                placeholderText: "输入文本消息..."
+                placeholderText: i18n.t("输入文本消息...")
 
                 Keys.onReturnPressed: sendText()
             }
 
             XButton {
-                text: "发送"
+                text: i18n.t("发送")
                 onClicked: sendText()
             }
         }
 
-        // 控制按钮区域
+        // Control button area
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
-            // 手动/自动模式切换
+            // Manual/automatic mode switching
             XButton {
                 Layout.fillWidth: true
-                text: mainModel.autoMode ? "切换到手动" : "切换到自动"
+                text: mainModel.autoMode ? i18n.t("切换到手动") : i18n.t("切换到自动")
                 variant: "secondary"
                 onClicked: eventBridge.onAutoToggle()
             }
 
-            // 说话按钮（手动模式）
+            // Speak button (manual mode)
             XButton {
                 Layout.fillWidth: true
                 text: mainModel.buttonText
@@ -55,10 +55,10 @@ Rectangle {
                 onReleased: eventBridge.onButtonRelease()
             }
 
-            // 中断按钮
+            // Interrupt button
             XButton {
                 Layout.preferredWidth: 80
-                text: "中断"
+                text: i18n.t("中断")
                 variant: "secondary"
                 onClicked: eventBridge.onAbort()
             }

@@ -6,40 +6,40 @@ import sounddevice as sd
 
 def detect_audio_devices():
     """
-    检测并列出所有音频设备 (使用sounddevice)
+    Detect and list all audio devices (using sounddevice)
     """
     print("\n===== 音频设备检测 (SoundDevice) =====\n")
 
-    # 获取默认设备
+    # Get default device
     default_input = sd.default.device[0] if sd.default.device else None
     default_output = sd.default.device[1] if sd.default.device else None
 
-    # 存储找到的设备
+    # Store found devices
     input_devices = []
     output_devices = []
 
-    # 列出所有设备
+    # List all devices
     devices = sd.query_devices()
     for i, dev_info in enumerate(devices):
-        # 打印设备信息
+        # Print device information
         print(f"设备 {i}: {dev_info['name']}")
         print(f"  - 输入通道: {dev_info['max_input_channels']}")
         print(f"  - 输出通道: {dev_info['max_output_channels']}")
         print(f"  - 默认采样率: {dev_info['default_samplerate']}")
 
-        # 标记默认设备
+        # Mark default device
         if i == default_input:
             print("  - 🎤 系统默认输入设备")
         if i == default_output:
             print("  - 🔊 系统默认输出设备")
 
-        # 识别输入设备（麦克风）
+        # Identify input device (microphone)
         if dev_info["max_input_channels"] > 0:
             input_devices.append((i, dev_info["name"]))
             if "USB" in dev_info["name"]:
                 print("  - 可能是USB麦克风 🎤")
 
-        # 识别输出设备（扬声器）
+        # identifies the output device (speaker)
         if dev_info["max_output_channels"] > 0:
             output_devices.append((i, dev_info["name"]))
             if "Headphones" in dev_info["name"]:
@@ -49,7 +49,7 @@ def detect_audio_devices():
 
         print("")
 
-    # 总结找到的设备
+    # Summarize found devices
     print("\n===== 设备总结 =====\n")
 
     print("找到的输入设备（麦克风）:")
@@ -62,15 +62,15 @@ def detect_audio_devices():
         default_mark = " (默认)" if idx == default_output else ""
         print(f"  - 设备 {idx}: {name}{default_mark}")
 
-    # 推荐设备
+    # Recommended device
     print("\n推荐设备配置:")
 
-    # 推荐麦克风
+    # Recommended microphone
     recommended_mic = None
     if default_input is not None:
         recommended_mic = (default_input, devices[default_input]["name"])
     elif input_devices:
-        # 优先USB设备
+        # Prioritize USB devices
         for idx, name in input_devices:
             if "USB" in name:
                 recommended_mic = (idx, name)
@@ -78,12 +78,12 @@ def detect_audio_devices():
         if recommended_mic is None:
             recommended_mic = input_devices[0]
 
-    # 推荐扬声器
+    # Recommended speakers
     recommended_speaker = None
     if default_output is not None:
         recommended_speaker = (default_output, devices[default_output]["name"])
     elif output_devices:
-        # 优先耳机
+        # Prioritize headphones
         for idx, name in output_devices:
             if "Headphones" in name:
                 recommended_speaker = (idx, name)
@@ -130,7 +130,7 @@ def detect_audio_devices():
 
     print("\n===== 设备测试 =====\n")
 
-    # 测试推荐设备
+    # Test recommended device
     if recommended_mic:
         print(f"正在测试麦克风 (设备 {recommended_mic[0]})...")
         try:
@@ -149,7 +149,7 @@ def detect_audio_devices():
     if recommended_speaker:
         print(f"正在测试扬声器 (设备 {recommended_speaker[0]})...")
         try:
-            # 生成测试音频 (440Hz正弦波)
+            # Generate test audio (440Hz sine wave)
             duration = 0.5
             sample_rate = 44100
             t = np.linspace(0, duration, int(sample_rate * duration))

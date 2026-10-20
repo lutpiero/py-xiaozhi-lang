@@ -1,15 +1,15 @@
-"""唤醒词配置与 keywords 保存."""
-
+"""Wake word configuration and keywords Save."""
 from PySide6.QtCore import Slot
 
 from src.audio_processing.keyword_converters import convert_wake_word
+from src.i18n import t
 from src.logging import get_logger
 
 logger = get_logger()
 
 
 class SettingsWakeWordMixin:
-    # ========== 唤醒词设置 ==========
+    # ========== Wake word settings ==========
 
     def _get_wakeWordEnabled(self) -> bool:
         return self._get_value("WAKE_WORD_OPTIONS.USE_WAKE_WORD", False)
@@ -41,12 +41,12 @@ class SettingsWakeWordMixin:
     def _set_keywordsThreshold(self, value: float):
         self._set_value("WAKE_WORD_OPTIONS.KEYWORDS_THRESHOLD", value)
 
-    # 唤醒词文本
+    # Wake word text
     def _load_wake_word(self, update_preview: bool = True):
-        """从配置加载唤醒词.
+        """Load wake word from configuration.
 
         Args:
-            update_preview: 是否立即转换拼音预览（转换可能触发额外 import）
+            update_preview: Whether to convert pinyin preview immediately (conversion may trigger additional import)
         """
         self._wake_word = self._get_value("WAKE_WORD_OPTIONS.WAKE_WORD", "")
         self._wake_word_lang = self._get_value("WAKE_WORD_OPTIONS.WAKE_WORD_LANG", "zh")
@@ -56,7 +56,7 @@ class SettingsWakeWordMixin:
             self._wake_word_preview = ""
 
     def _update_wake_word_preview(self):
-        """更新唤醒词预览."""
+        """Update wake word preview."""
         if not self._wake_word:
             self._wake_word_preview = ""
             return
@@ -66,8 +66,8 @@ class SettingsWakeWordMixin:
             self._wake_word_preview = keyword_line
             self._wake_word_lang = lang
         except Exception as e:
-            logger.error(f"转换唤醒词失败: {e}", exc_info=True)
-            self._wake_word_preview = f"转换失败: {e}"
+            logger.error(t('转换唤醒词失败: {value1}', value1=e), exc_info=True)
+            self._wake_word_preview = t("转换失败: {error}", error=e)
 
     def _get_wakeWord(self) -> str:
         return self._wake_word
@@ -86,26 +86,26 @@ class SettingsWakeWordMixin:
 
     @Slot(result=bool)
     def saveWakeWord(self) -> bool:
-        """保存唤醒词并生成 keywords.txt.
+        """Save wake word and generate keywords.txt.
 
         Returns:
-            是否保存成功
+            Whether the save is successful
         """
         if not self._wake_word:
-            self.statusMessage.emit("请输入唤醒词")
+            self.statusMessage.emit(t("请输入唤醒词"))
             return False
 
         try:
-            # 转换唤醒词
+            # Convert wake word
             keyword_line, lang, model_path = convert_wake_word(self._wake_word)
 
-            # 更新配置
+            # Update configuration
             self._set_value("WAKE_WORD_OPTIONS.WAKE_WORD", self._wake_word)
             self._set_value("WAKE_WORD_OPTIONS.WAKE_WORD_LANG", lang)
             self._set_value("WAKE_WORD_OPTIONS.MODEL_PATH", model_path)
 
-            # 写入 keywords.txt 到用户数据目录
-            from src.utils.resource_finder import get_keywords_dir, get_user_data_dir
+            # Write keywords.txt to the user data directory
+            from src.utils.resource_finder import get_keywords_dir
 
             keywords_dir = get_keywords_dir()
             keywords_dir.mkdir(parents=True, exist_ok=True)
@@ -114,15 +114,15 @@ class SettingsWakeWordMixin:
             with open(keywords_path, "w", encoding="utf-8") as f:
                 f.write(keyword_line + "\n")
 
-            logger.info(f"唤醒词已保存: {self._wake_word} -> {keywords_path}")
-            self.statusMessage.emit(f"唤醒词已保存 ({lang.upper()})")
+            logger.info(t('唤醒词已保存: {value1} -> {value3}', value1=self._wake_word, value3=keywords_path))
+            self.statusMessage.emit(t('唤醒词已保存 ({value1})', value1=lang.upper()))
 
-            # 保存到文件
+            # Save to file
             self.save()
             return True
 
         except Exception as e:
-            logger.error(f"保存唤醒词失败: {e}", exc_info=True)
-            self.statusMessage.emit(f"保存失败: {e}")
+            logger.error(t('保存唤醒词失败: {value1}', value1=e), exc_info=True)
+            self.statusMessage.emit(t('保存失败: {value1}', value1=e))
             return False
 

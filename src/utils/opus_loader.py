@@ -1,4 +1,4 @@
-"""Opus 库加载器 - 确保 opuslib 能找到 opus 动态库."""
+"""Opus library loader - ensure that opuslib can find the opus dynamic library."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import os
 import sys
 from pathlib import Path
 
+from src.i18n import t
 from src.logging import get_logger
 from src.utils.resource_finder import get_lib_path
 
@@ -17,7 +18,7 @@ _opus_loaded = False
 
 
 def _find_system_opus() -> str | None:
-    """查找系统安装的 opus 库."""
+    """Find the opus library installed on the system."""
     if sys.platform == "win32":
         return None
 
@@ -42,7 +43,7 @@ def _find_system_opus() -> str | None:
 
 
 def _try_load(path: str | Path) -> bool:
-    """尝试加载动态库."""
+    """Try to load the dynamic library."""
     try:
         ctypes.CDLL(str(path))
         return True
@@ -51,7 +52,7 @@ def _try_load(path: str | Path) -> bool:
 
 
 def _patch_find_library(lib_path: str):
-    """修补 ctypes.util.find_library，让 opuslib 能找到 opus."""
+    """Patch ctypes.util.find_library so that opuslib can find it opus."""
     original = ctypes.util.find_library
 
     def patched(name: str) -> str | None:
@@ -63,20 +64,20 @@ def _patch_find_library(lib_path: str):
 
 
 def setup_opus() -> bool:
-    """设置 opus 库，供 opuslib 使用.
+    """Set up the opus library for use by opuslib.
 
-    搜索顺序：
-    1. 项目内置 opus（libs/libopus/）— 版本可控、部署一致
-    2. 系统 opus（brew/apt）— 兜底
+    Search sequence:
+    1. Project built-in opus (libs/libopus/) - version controllable and consistent deployment
+    2. System opus (brew/apt) - Bottom line
 
     Returns:
-        是否成功加载
+        Whether it is successfully loaded
     """
     global _opus_loaded
     if _opus_loaded:
         return True
 
-    # 1. 优先内置 opus
+    # 1. Priority is given to built-in opus
     bundled_path = get_lib_path("libopus")
     if bundled_path and bundled_path.exists():
         if sys.platform == "win32":
@@ -86,21 +87,21 @@ def setup_opus() -> bool:
             os.environ["PATH"] = lib_dir + os.pathsep + os.environ.get("PATH", "")
 
         if _try_load(bundled_path):
-            logger.debug(f"使用内置 opus: {bundled_path}")
+            logger.debug(t('使用内置 opus: {value1}', value1=bundled_path))
             _patch_find_library(str(bundled_path))
             _opus_loaded = True
             return True
 
-    # 2. 兜底：系统 opus
+    # 2. Bottom line: system opus
     system_path = _find_system_opus()
     if system_path and _try_load(system_path):
-        logger.debug(f"使用系统 opus: {system_path}")
+        logger.debug(t('使用系统 opus: {value1}', value1=system_path))
         _patch_find_library(system_path)
         _opus_loaded = True
         return True
 
     logger.warning(
-        "未找到 opus 库，音频编解码可能无法工作。"
-        "Linux/macOS 可通过包管理器安装: brew install opus / apt install libopus0"
+        t("未找到 opus 库，音频编解码可能无法工作。"
+        "Linux/macOS 可通过包管理器安装: brew install opus / apt install libopus0")
     )
     return False

@@ -8,6 +8,7 @@ import json
 import httpx
 from openai import OpenAI
 
+from src.i18n import t
 from src.logging import get_logger
 from src.utils.config_manager import get_config
 
@@ -18,17 +19,17 @@ logger = get_logger()
 
 class VLCamera(BaseCamera):
     """
-    智普AI摄像头实现.
+    Zhipu AI camera implementation.
     """
 
     def __init__(self):
         """
-        初始化智普AI摄像头.
+        initializes the Zhipu AI camera.
         """
         super().__init__()
         config = get_config()
 
-        # 初始化OpenAI客户端（设置超时防止 API 无响应时线程池挂起）
+        # Initialize OpenAI client (set timeout to prevent API The thread pool hangs when there is no response)
         self.client = OpenAI(
             api_key=config.get_config("CAMERA.VLapi_key"),
             base_url=config.get_config(
@@ -42,7 +43,7 @@ class VLCamera(BaseCamera):
 
     def capture(self) -> bool:
         """
-        捕获图像（OpenCV/V4L2 或 picamera2，见 capture_backend）.
+        Capture images (OpenCV/V4L2 or picamera2, see capture_backend).
         """
         return self.capture_frame()
 
@@ -54,10 +55,10 @@ class VLCamera(BaseCamera):
                     {"success": False, "message": "Camera buffer is empty"}
                 )
 
-            # 将图像转换为Base64
+            # converts the image to Base64
             image_base64 = base64.b64encode(buf).decode("utf-8")
 
-            # 准备消息
+            # Prepare message
             messages = [
                 {"role": "system", "content": "You are a helpful assistant."},
                 {
@@ -74,14 +75,14 @@ class VLCamera(BaseCamera):
                             "text": (
                                 question
                                 if question
-                                else "图中描绘的是什么景象？请详细描述。"
+                                else t("图中描绘的是什么景象？请详细描述。")
                             ),
                         },
                     ],
                 },
             ]
 
-            # 发送请求
+            # sends the request
             completion = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
@@ -90,13 +91,13 @@ class VLCamera(BaseCamera):
                 stream_options={"include_usage": True},
             )
 
-            # 收集响应
+            # collects the response
             result = ""
             for chunk in completion:
                 if chunk.choices:
                     result += chunk.choices[0].delta.content or ""
 
-            # 记录响应
+            # Record response
             logger.info(f"VL analysis completed, question={question}")
             return json.dumps({"success": True, "text": result}, ensure_ascii=False)
 

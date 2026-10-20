@@ -1,15 +1,15 @@
-// 应用主入口
+// The main entrance of the application
 import QtQuick
 import QtQuick.Window
 
 import "windows"
 
-// 主窗口作为根元素；初始隐藏，由 QmlAppHost.show_root 决定是否抢前台
+// The main window is used as the root element; initially hidden, QmlAppHost.show_root determines whether to grab the front desk
 MainWindow {
     id: mainWindow
     visible: false
 
-    // 设置窗口 - 使用 Loader 延迟加载（作为独立窗口）
+    // Settings window - use Loader Lazy loading (as a standalone window)
     Loader {
         id: settingsLoader
         active: false
@@ -22,18 +22,18 @@ MainWindow {
         }
     }
 
-    // 监听 eventBridge 的信号来控制设置窗口
+    // Listens to the eventBridge signal to control the setting window
     Connections {
         target: eventBridge
 
         function onShowSettingsWindow() {
             if (settingsLoader.active) {
-                // 已加载，直接显示
+                // is loaded, directly displayed
                 settingsLoader.item.visible = true
                 settingsLoader.item.raise()
                 settingsLoader.item.requestActivate()
             } else {
-                // 首次加载
+                // first load
                 settingsLoader.active = true
             }
         }

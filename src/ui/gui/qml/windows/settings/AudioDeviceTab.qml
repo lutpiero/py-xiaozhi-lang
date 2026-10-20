@@ -1,4 +1,4 @@
-// 音频设备设置页
+// Audio device setting page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,11 +9,11 @@ ScrollView {
     id: root
     clip: true
 
-    // 测试状态
+    // Test status
     property bool inputTesting: false
     property bool outputTesting: false
 
-    // 状态日志
+    // Status log
     property var statusLogs: []
 
     function addLog(message) {
@@ -24,15 +24,15 @@ ScrollView {
         }
     }
 
-    // 初始化时加载设备列表
+    // Load device list during initialization
     Component.onCompleted: {
         if (settingsModel) {
             inputCombo.model = settingsModel.getInputDevices()
             outputCombo.model = settingsModel.getOutputDevices()
-            // model 设置后重新同步 currentIndex
+            // model Resynchronize after setting currentIndex
             inputCombo.currentIndex = settingsModel.selectedInputIndex
             outputCombo.currentIndex = settingsModel.selectedOutputIndex
-            addLog("设备列表已加载")
+            addLog(i18n.t("设备列表已加载"))
         }
     }
 
@@ -42,10 +42,10 @@ ScrollView {
             if (settingsModel) {
                 inputCombo.model = settingsModel.getInputDevices()
                 outputCombo.model = settingsModel.getOutputDevices()
-                // model 设置后重新同步 currentIndex
+                // model Resynchronize after setting currentIndex
                 inputCombo.currentIndex = settingsModel.selectedInputIndex
                 outputCombo.currentIndex = settingsModel.selectedOutputIndex
-                addLog("设备列表已刷新")
+                addLog(i18n.t("设备列表已刷新"))
             }
         }
         function onTestComplete(type, success) {
@@ -64,13 +64,13 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "音频设备"
+                text: i18n.t("音频设备")
                 font.pixelSize: Theme.fontSizeXl
                 font.weight: Font.DemiBold
                 color: Theme.textPrimary
@@ -79,7 +79,7 @@ ScrollView {
             Item { Layout.fillWidth: true }
 
             Button {
-                text: "刷新设备"
+                text: i18n.t("刷新设备")
                 Layout.preferredHeight: 32
 
                 background: Rectangle {
@@ -99,13 +99,13 @@ ScrollView {
             }
         }
 
-        // 输入设备
+        // Input device
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "输入设备 (麦克风)"
+                text: i18n.t("输入设备 (麦克风)")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -126,7 +126,7 @@ ScrollView {
                 }
 
                 Button {
-                    text: root.inputTesting ? "测试中..." : "测试"
+                    text: root.inputTesting ? i18n.t("测试中...") : i18n.t("测试")
                     enabled: !root.inputTesting
                     Layout.preferredWidth: 80
                     Layout.preferredHeight: 32
@@ -151,7 +151,7 @@ ScrollView {
                 }
             }
 
-            // 设备信息
+            // Device information
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -169,20 +169,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 输出设备
+        // Output device
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "输出设备 (扬声器)"
+                text: i18n.t("输出设备 (扬声器)")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -203,7 +203,7 @@ ScrollView {
                 }
 
                 Button {
-                    text: root.outputTesting ? "测试中..." : "测试"
+                    text: root.outputTesting ? i18n.t("测试中...") : i18n.t("测试")
                     enabled: !root.outputTesting
                     Layout.preferredWidth: 80
                     Layout.preferredHeight: 32
@@ -228,7 +228,7 @@ ScrollView {
                 }
             }
 
-            // 设备信息
+            // Device information
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -246,20 +246,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // Opus 输出采样率
+        // Opus output sampling rate
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "Opus 输出采样率"
+                text: i18n.t("Opus 输出采样率")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -272,19 +272,19 @@ ScrollView {
                 XComboBox {
                     id: sampleRateCombo
                     Layout.fillWidth: true
-                    model: ["24000 Hz (官方服务器)", "16000 Hz (第三方服务器)"]
+                    model: [i18n.t("24000 Hz (官方服务器)"), i18n.t("16000 Hz (第三方服务器)")]
                     currentIndex: settingsModel ? (settingsModel.opusOutputSampleRate === 24000 ? 0 : 1) : 0
                     onActivated: function(index) {
                         if (settingsModel) {
                             settingsModel.opusOutputSampleRate = (index === 0) ? 24000 : 16000
-                            addLog("Opus 输出采样率已设置为 " + (index === 0 ? "24000" : "16000") + " Hz")
+                            addLog(i18n.t("Opus 输出采样率已设置为 ") + (index === 0 ? "24000" : "16000") + " Hz")
                         }
                     }
                     font.pixelSize: Theme.fontSizeSm
                 }
             }
 
-            // 提示
+            // Prompt
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -295,27 +295,27 @@ ScrollView {
                     anchors.left: parent.left
                     anchors.leftMargin: Theme.spacingMd
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "官方服务器使用 24kHz，第三方服务器通常使用 16kHz"
+                    text: i18n.t("官方服务器使用 24kHz，第三方服务器通常使用 16kHz")
                     font.pixelSize: Theme.fontSizeXs
                     color: Theme.textPlaceholder
                 }
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 音频帧长度
+        // Audio frame length
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "音频帧长度"
+                text: i18n.t("音频帧长度")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -328,7 +328,7 @@ ScrollView {
                 XComboBox {
                     id: frameDurationCombo
                     Layout.fillWidth: true
-                    model: ["20 ms (低延迟)", "40 ms (平衡)", "60 ms (低CPU)"]
+                    model: [i18n.t("20 ms (低延迟)"), i18n.t("40 ms (平衡)"), i18n.t("60 ms (低CPU)")]
                     currentIndex: {
                         if (!settingsModel) return 0
                         var duration = settingsModel.frameDuration
@@ -341,14 +341,14 @@ ScrollView {
                         if (settingsModel) {
                             var durations = [20, 40, 60]
                             settingsModel.frameDuration = durations[index]
-                            addLog("音频帧长度已设置为 " + durations[index] + " ms")
+                            addLog(i18n.t("音频帧长度已设置为 ") + durations[index] + " ms")
                         }
                     }
                     font.pixelSize: Theme.fontSizeSm
                 }
             }
 
-            // 提示
+            // Prompt
             Rectangle {
                 Layout.fillWidth: true
                 height: 36
@@ -359,30 +359,30 @@ ScrollView {
                     anchors.left: parent.left
                     anchors.leftMargin: Theme.spacingMd
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "20ms 低延迟高CPU，60ms 高延迟低CPU（适合树莓派）"
+                    text: i18n.t("20ms 低延迟高CPU，60ms 高延迟低CPU（适合树莓派）")
                     font.pixelSize: Theme.fontSizeXs
                     color: Theme.textPlaceholder
                 }
             }
         }
 
-        // 提示信息
+        // Prompt message
         Text {
             Layout.fillWidth: true
-            text: "点击测试按钮验证设备是否正常工作。输入测试会录制 3 秒音频，输出测试会播放 440Hz 测试音。"
+            text: i18n.t("点击测试按钮验证设备是否正常工作。输入测试会录制 3 秒音频，输出测试会播放 440Hz 测试音。")
             font.pixelSize: Theme.fontSizeSm
             color: Theme.textPlaceholder
             wrapMode: Text.WordWrap
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 状态日志区域
+        // Status log area
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
@@ -391,7 +391,7 @@ ScrollView {
                 Layout.fillWidth: true
 
                 Text {
-                    text: "状态日志"
+                    text: i18n.t("状态日志")
                     font.pixelSize: Theme.fontSizeMd
                     font.weight: Font.Medium
                     color: Theme.textSecondary
@@ -400,7 +400,7 @@ ScrollView {
                 Item { Layout.fillWidth: true }
 
                 Button {
-                    text: "清除日志"
+                    text: i18n.t("清除日志")
                     Layout.preferredHeight: 28
 
                     background: Rectangle {
@@ -418,12 +418,12 @@ ScrollView {
 
                     onClicked: {
                         root.statusLogs = []
-                        addLog("日志已清除")
+                        addLog(i18n.t("日志已清除"))
                     }
                 }
             }
 
-            // 日志显示区域
+            // Log display area
             Rectangle {
                 Layout.fillWidth: true
                 height: 120

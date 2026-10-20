@@ -1,9 +1,9 @@
-"""摄像头 MCP 工具注册与工厂."""
-
+"""Camera MCP tool registration and factory."""
 import asyncio
 import json
 from collections.abc import Callable
 
+from src.i18n import t
 from src.logging import get_logger
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 from src.utils.config_manager import get_config
@@ -16,7 +16,7 @@ logger = get_logger()
 
 def create_camera():
     """
-    按配置创建一个摄像头实现并返回.
+    Creates a camera implementation as configured and returns.
     """
     config = get_config()
 
@@ -49,7 +49,7 @@ def register_camera_tools(add_tool: Callable[[McpTool], None], camera) -> None:
         McpTool(
             "take_photo",
             (
-                "【拍照识图】当用户提到：拍照、拍张照、照张相、看一下、看看、帮我看、这是什么、识别、"
+                t("【拍照识图】当用户提到：拍照、拍张照、照张相、看一下、看看、帮我看、这是什么、识别、"
                 "识图、看图、图片、照片、帮我瞧瞧 时调用本工具。\n"
                 "功能：拍照并分析图片内容，回答用户关于图片的问题。\n"
                 "使用场景：\n"
@@ -63,10 +63,10 @@ def register_camera_tools(add_tool: Callable[[McpTool], None], camera) -> None:
                 "English: Take a photo and explain it. Use this tool after the user asks you to see something.\n"
                 "Args: `question` - The question that you want to ask about the photo.\n"
                 "Return: A JSON object that provides the photo information.\n"
-                "Examples: '帮我看看这是什么', '拍个照', '看看前面', 'take a photo', 'what is this'."
+                "Examples: '帮我看看这是什么', '拍个照', '看看前面', 'take a photo', 'what is this'.")
             ),
             PropertyList([Property("question", PropertyType.STRING)]),
             take_photo,
         )
     )
-    logger.info("已注册 take_photo（容器注入 camera）")
+    logger.info(t("已注册 take_photo（容器注入 camera）"))

@@ -1,4 +1,4 @@
-// 摄像头设置页
+// Camera settings page
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,11 +9,13 @@ ScrollView {
     id: root
     clip: true
 
-    // 测试状态
+    // Test status
     property bool cameraTesting: false
+    property bool cameraTestPassed: false
+    property bool cameraTestFailed: false
     property string testResult: ""
 
-    // 进入摄像头页时再扫描（启动阶段不扫 OpenCV，避免冷启动卡顿）
+    // Scan again when entering the camera page (do not scan OpenCV during startup to avoid cold start lag)
     Component.onCompleted: {
         if (settingsModel) {
             var list = settingsModel.getCameras()
@@ -31,15 +33,18 @@ ScrollView {
         function onDevicesChanged() {
             if (settingsModel) {
                 cameraCombo.model = settingsModel.getCameras()
-                // model 设置后重新同步 currentIndex
+                // model Resynchronize after setting currentIndex
                 cameraCombo.currentIndex = settingsModel.selectedCameraIndex
             }
         }
         function onStatusMessage(message) {
             root.testResult = message
-            if (message.startsWith("[成功]") || message.startsWith("[失败]") || message.startsWith("[错误]")) {
-                root.cameraTesting = false
-            }
+        }
+        function onTestComplete(kind, success) {
+            if (kind !== "camera") return
+            root.cameraTesting = false
+            root.cameraTestPassed = success
+            root.cameraTestFailed = !success
         }
     }
 
@@ -47,21 +52,21 @@ ScrollView {
         width: root.availableWidth
         spacing: Theme.spacingLg
 
-        // 页面标题
+        // Page title
         Text {
-            text: "摄像头设置"
+            text: i18n.t("摄像头设置")
             font.pixelSize: Theme.fontSizeXl
             font.weight: Font.DemiBold
             color: Theme.textPrimary
         }
 
-        // 设备选择
+        // Device selection
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "设备选择"
+                text: i18n.t("设备选择")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -72,7 +77,7 @@ ScrollView {
                 spacing: Theme.spacingMd
 
                 Text {
-                    text: "摄像头"
+                    text: i18n.t("摄像头")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -89,7 +94,7 @@ ScrollView {
                 }
 
                 Button {
-                    text: root.cameraTesting ? "测试中..." : "测试"
+                    text: root.cameraTesting ? i18n.t("测试中...") : i18n.t("测试")
                     enabled: !root.cameraTesting
                     Layout.preferredWidth: 70
                     Layout.preferredHeight: 32
@@ -109,13 +114,15 @@ ScrollView {
 
                     onClicked: {
                         root.cameraTesting = true
+                        root.cameraTestPassed = false
+                        root.cameraTestFailed = false
                         root.testResult = ""
                         if (settingsModel) settingsModel.testCamera()
                     }
                 }
 
                 Button {
-                    text: "刷新"
+                    text: i18n.t("刷新")
                     Layout.preferredWidth: 70
                     Layout.preferredHeight: 32
 
@@ -137,20 +144,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 视频参数
+        // Video parameters
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "视频参数"
+                text: i18n.t("视频参数")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -163,7 +170,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "分辨率"
+                    text: i18n.t("分辨率")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -201,7 +208,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "帧率"
+                    text: i18n.t("帧率")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -228,20 +235,20 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // VL API 配置
+        // VL API configuration
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingMd
 
             Text {
-                text: "视觉语言模型 (VL API)"
+                text: i18n.t("视觉语言模型 (VL API)")
                 font.pixelSize: Theme.fontSizeMd
                 font.weight: Font.Medium
                 color: Theme.textSecondary
@@ -254,7 +261,7 @@ ScrollView {
                 columnSpacing: Theme.spacingLg
 
                 Text {
-                    text: "API 地址"
+                    text: i18n.t("API 地址")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -288,7 +295,7 @@ ScrollView {
                 }
 
                 Text {
-                    text: "模型"
+                    text: i18n.t("模型")
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.textSecondary
                     Layout.preferredWidth: 80
@@ -309,23 +316,21 @@ ScrollView {
             }
         }
 
-        // 分隔线
+        // Separator
         Rectangle {
             Layout.fillWidth: true
             height: 1
             color: Theme.divider
         }
 
-        // 测试结果
+        // Test results
         Rectangle {
             Layout.fillWidth: true
             height: 48
-            color: root.testResult.startsWith("[成功]") ? Theme.successLight :
-                   root.testResult.startsWith("[失败]") ? Theme.errorLight :
-                   root.testResult.startsWith("[错误]") ? Theme.errorLight : Theme.backgroundSecondary
-            border.color: root.testResult.startsWith("[成功]") ? Theme.successBorder :
-                          root.testResult.startsWith("[失败]") ? Theme.errorBorder :
-                          root.testResult.startsWith("[错误]") ? Theme.errorBorder : Theme.divider
+            color: root.cameraTestPassed ? Theme.successLight :
+                   root.cameraTestFailed ? Theme.errorLight : Theme.backgroundSecondary
+            border.color: root.cameraTestPassed ? Theme.successBorder :
+                          root.cameraTestFailed ? Theme.errorBorder : Theme.divider
             radius: Theme.radiusMd
             visible: root.testResult.length > 0 || root.cameraTesting
 
@@ -343,20 +348,19 @@ ScrollView {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.cameraTesting ? "正在测试摄像头..." : root.testResult
+                    text: root.cameraTesting ? i18n.t("正在测试摄像头...") : root.testResult
                     font.pixelSize: Theme.fontSizeSm
-                    color: root.testResult.startsWith("[成功]") ? Theme.success :
-                           root.testResult.startsWith("[失败]") ? Theme.error :
-                           root.testResult.startsWith("[错误]") ? Theme.error : Theme.textSecondary
+                    color: root.cameraTestPassed ? Theme.success :
+                           root.cameraTestFailed ? Theme.error : Theme.textSecondary
                     elide: Text.ElideRight
                 }
             }
         }
 
-        // 提示信息
+        // Prompt message
         Text {
             Layout.fillWidth: true
-            text: "摄像头用于视觉识别功能。如需使用本地 VL 模型，请配置 API 地址和密钥。"
+            text: i18n.t("摄像头用于视觉识别功能。如需使用本地 VL 模型，请配置 API 地址和密钥。")
             font.pixelSize: Theme.fontSizeSm
             color: Theme.textPlaceholder
             wrapMode: Text.WordWrap

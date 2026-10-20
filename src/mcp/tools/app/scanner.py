@@ -1,12 +1,12 @@
-"""统一的应用程序扫描器入口.
+"""Unified application scanner entrance.
 
-根据当前系统自动选择对应的扫描器实现
+Automatically select the corresponding scanner according to the current system to implement
 """
-
 import asyncio
 import json
 from typing import Any, Dict
 
+from src.i18n import t
 from src.logging import get_logger
 
 from .utils import get_system_scanner
@@ -15,24 +15,24 @@ logger = get_logger()
 
 
 async def scan_installed_applications(args: Dict[str, Any]) -> str:
-    """扫描系统中所有已安装的应用程序.
+    """Scan Scan all installed applications in the system.
 
     Args:
-        args: 包含扫描参数的字典
-            - force_refresh: 是否强制重新扫描（可选，默认False）
+        args: Dictionary containing scan parameters
+            - force_refresh: Whether to force rescan (optional, default False)
 
     Returns:
-        str: JSON格式的应用程序列表
+        str: List of applications in JSON format
     """
     try:
         force_refresh = args.get("force_refresh", False)
-        logger.info(f"[AppScanner] 开始扫描已安装应用程序，强制刷新: {force_refresh}")
+        logger.info(t('[AppScanner] 开始扫描已安装应用程序，强制刷新: {value1}', value1=force_refresh))
 
-        # 获取系统对应的扫描器
+        # Get the scanner corresponding to the system
         scanner = get_system_scanner()
         if not scanner:
-            error_msg = "不支持的操作系统"
-            logger.error(f"[AppScanner] {error_msg}")
+            error_msg = t("不支持的操作系统")
+            logger.error(t("[AppScanner] {message}", message=error_msg))
             return json.dumps(
                 {
                     "success": False,
@@ -43,22 +43,22 @@ async def scan_installed_applications(args: Dict[str, Any]) -> str:
                 ensure_ascii=False,
             )
 
-        # 使用线程池执行扫描，避免阻塞事件循环
+        # Uses a thread pool to perform scans to avoid blocking the event loop
         apps = await asyncio.to_thread(scanner.scan_installed_applications)
 
         result = {
             "success": True,
             "total_count": len(apps),
             "applications": apps,
-            "message": f"成功扫描到 {len(apps)} 个已安装应用程序",
+            "message": t('成功扫描到 {value1} 个已安装应用程序', value1=len(apps)),
         }
 
-        logger.info(f"[AppScanner] 扫描完成，找到 {len(apps)} 个应用程序")
+        logger.info(t('[AppScanner] 扫描完成，找到 {value1} 个应用程序', value1=len(apps)))
         return json.dumps(result, ensure_ascii=False, indent=2)
 
     except Exception as e:
-        error_msg = f"扫描应用程序失败: {str(e)}"
-        logger.error(f"[AppScanner] {error_msg}", exc_info=True)
+        error_msg = t("扫描应用程序失败: {error}", error=str(e))
+        logger.error(t("[AppScanner] {message}", message=error_msg), exc_info=True)
         return json.dumps(
             {
                 "success": False,
@@ -71,24 +71,24 @@ async def scan_installed_applications(args: Dict[str, Any]) -> str:
 
 
 async def list_running_applications(args: Dict[str, Any]) -> str:
-    """列出系统中正在运行的应用程序.
+    """Lists running applications on the system.
 
     Args:
-        args: 包含过滤参数的字典
-            - filter_name: 应用名称过滤条件（可选）
+        args: Dictionary containing filter parameters
+            - filter_name: Apply name filter conditions (optional)
 
     Returns:
-        str: JSON格式的运行应用程序列表
+        str: List of running applications in JSON format
     """
     try:
         filter_name = args.get("filter_name", "")
-        logger.info(f"[AppScanner] 开始列出正在运行的应用程序，过滤条件: {filter_name}")
+        logger.info(t('[AppScanner] 开始列出正在运行的应用程序，过滤条件: {value1}', value1=filter_name))
 
-        # 获取系统对应的扫描器
+        # Get the scanner corresponding to the system
         scanner = get_system_scanner()
         if not scanner:
-            error_msg = "不支持的操作系统"
-            logger.error(f"[AppScanner] {error_msg}")
+            error_msg = t("不支持的操作系统")
+            logger.error(t("[AppScanner] {message}", message=error_msg))
             return json.dumps(
                 {
                     "success": False,
@@ -99,10 +99,10 @@ async def list_running_applications(args: Dict[str, Any]) -> str:
                 ensure_ascii=False,
             )
 
-        # 使用线程池执行扫描，避免阻塞事件循环
+        # Uses a thread pool to perform scans to avoid blocking the event loop
         apps = await asyncio.to_thread(scanner.scan_running_applications)
 
-        # 应用过滤条件
+        # Apply filters
         if filter_name:
             filter_lower = filter_name.lower()
             filtered_apps = []
@@ -119,15 +119,15 @@ async def list_running_applications(args: Dict[str, Any]) -> str:
             "success": True,
             "total_count": len(apps),
             "applications": apps,
-            "message": f"找到 {len(apps)} 个正在运行的应用程序",
+            "message": t('找到 {value1} 个正在运行的应用程序', value1=len(apps)),
         }
 
-        logger.info(f"[AppScanner] 列出完成，找到 {len(apps)} 个正在运行的应用程序")
+        logger.info(t('[AppScanner] 列出完成，找到 {value1} 个正在运行的应用程序', value1=len(apps)))
         return json.dumps(result, ensure_ascii=False, indent=2)
 
     except Exception as e:
-        error_msg = f"列出运行应用程序失败: {str(e)}"
-        logger.error(f"[AppScanner] {error_msg}", exc_info=True)
+        error_msg = t("列出运行应用程序失败: {error}", error=str(e))
+        logger.error(t("[AppScanner] {message}", message=error_msg), exc_info=True)
         return json.dumps(
             {
                 "success": False,

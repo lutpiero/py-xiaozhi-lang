@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""CLI 终端界面."""
-
+"""CLI terminal interface."""
 import asyncio
 from typing import TYPE_CHECKING, Optional
 
 from src.core.event_bus import EventBus, Events
+from src.i18n import t
 from src.logging import get_logger
 
 from .display import CLIDisplay
@@ -16,7 +16,7 @@ logger = get_logger()
 
 
 class CliViewManager:
-    """CLI 界面（ViewPort：与 GUI/GPIO 同一套 set_*）."""
+    """CLI interface (ViewPort: the same set_* as GUI/GPIO)."""
 
     def __init__(
         self,
@@ -29,67 +29,67 @@ class CliViewManager:
         self._running = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
-        # 状态
+        # Status
         self._auto_mode = False
-        self._status = "待命"
+        self._status = t("待命")
         self._connected = False
         self._chat_text = ""
         self._music_line = ""
 
-        # 设置命令回调
+        # Set command callback
         self._display.set_command_callback(self._handle_command)
 
-        # 尽早拦截日志输出
+        # Intercept log output early
         self._display.intercept_logging()
 
     async def start(self, mode: str = "cli"):
-        """启动 CLI 视图.
+        """Launch CLI view.
 
         Args:
-            mode: 运行模式（CLI 模式下忽略此参数）
+            mode: running mode (CLI This parameter is ignored in mode)
         """
-        logger.info("CliViewManager: 启动 CLI 界面...")
+        logger.info(t("CliViewManager: 启动 CLI 界面..."))
         self._running = True
         self._loop = asyncio.get_running_loop()
 
-        # 启动 CLI 显示
+        # Launch CLI display
         try:
             await self._display.start()
         except asyncio.CancelledError:
-            logger.info("CliViewManager: 显示任务被取消")
+            logger.info(t("CliViewManager: 显示任务被取消"))
 
     async def close(self):
-        """关闭 CLI 视图."""
-        logger.info("CliViewManager: 正在关闭...")
+        """closes the CLI view."""
+        logger.info(t("CliViewManager: 正在关闭..."))
         self._running = False
         await self._display.close()
-        logger.info("CliViewManager: 已关闭")
+        logger.info(t("CliViewManager: 已关闭"))
 
     def _handle_command(self, cmd: str):
-        """处理用户命令 - 统一入口."""
+        """Handle user commands - unified portal."""
         cmd_lower = cmd.lower()
 
         if cmd_lower == "r":
-            # 开始/停止对话
+            # Start/stop conversations
             self._safe_emit(Events.UI_MANUAL_TOGGLE)
         elif cmd_lower == "x":
-            # 中断
+            # interrupts
             self._safe_emit(Events.UI_ABORT_REQUEST)
         elif cmd_lower == "q":
-            # 退出
+            # Exit
             self._safe_emit(Events.UI_QUIT_REQUEST)
         elif cmd_lower == "h":
-            # 显示帮助
+            # Show help
             self._display.show_help()
         else:
-            # 发送文本
+            # sends text
             self._safe_emit(Events.UI_SEND_TEXT, {"text": cmd})
 
     def _safe_emit(self, event: str, data=None):
-        """安全地发送事件.
+        """Send events securely.
 
-        优先经 TaskManager.schedule_nowait（线程安全 + 可追踪）；
-        否则回退 run_coroutine_threadsafe。
+        first via TaskManager.schedule_nowait (thread safe and traceable);
+        otherwise falls back to run_coroutine_threadsafe.
         """
         def _start_emit():
             if data is None:
@@ -102,7 +102,7 @@ class CliViewManager:
                 return
             except Exception as e:
                 logger.error(
-                    f"CliViewManager 经 TaskManager 调度事件 {event} 失败: {e}",
+                    t('CliViewManager 经 TaskManager 调度事件 {value1} 失败: {value3}', value1=event, value3=e),
                     exc_info=True,
                 )
 
@@ -119,25 +119,25 @@ class CliViewManager:
                     return
                 if exc:
                     logger.error(
-                        f"CliViewManager 发射事件 {event} 失败: {exc}",
+                        t('CliViewManager 发射事件 {value1} 失败: {value3}', value1=event, value3=exc),
                         exc_info=exc,
                     )
 
             fut.add_done_callback(_done)
         except Exception as e:
-            logger.error(f"CliViewManager 调度事件 {event} 失败: {e}", exc_info=True)
+            logger.error(t('CliViewManager 调度事件 {value1} 失败: {value3}', value1=event, value3=e), exc_info=True)
             if asyncio.iscoroutine(coro):
                 coro.close()
 
-    # ========== 公共 API ==========
+    # ========== Public API ==========
 
     @property
     def is_running(self) -> bool:
-        """是否正在运行."""
+        """Is it running."""
         return self._running
 
     def set_status(self, status: str, connected: bool = True):
-        """设置状态."""
+        """Set status."""
         self._status = status
         self._connected = connected
         self._display.update_status(status, connected)
@@ -158,7 +158,7 @@ class CliViewManager:
         self._display.update_auto_mode(auto_mode)
 
     def set_button_text(self, text: str):
-        # 终端没有主按钮
+        # Terminal has no home button
         logger.debug(f"CLI set_button_text: {text}")
 
     def is_auto_mode(self) -> bool:

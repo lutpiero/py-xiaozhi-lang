@@ -1,9 +1,10 @@
-"""应用管理 MCP 工具：显式 register_app_tools."""
+"""Application management MCP tools: explicit register_app_tools."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
+from src.i18n import t
 from src.logging import get_logger
 from src.mcp.tooling import McpTool, Property, PropertyList, PropertyType
 
@@ -16,7 +17,7 @@ logger = get_logger()
 
 
 def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
-    """向 McpServer 注册应用管理工具."""
+    """Register application management tools with McpServer."""
 
     async def launch_application(args):
         return await _launch_application(args)
@@ -34,7 +35,7 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
         McpTool(
             "self.application.launch",
             (
-                "Launch desktop applications and software programs by name. This tool opens applications installed "
+                t("Launch desktop applications and software programs by name. This tool opens applications installed "
                 "on the user's computer across Windows, macOS, and Linux platforms. It automatically detects the "
                 "operating system and uses appropriate launch methods.\n"
                 "Use this tool when the user wants to:\n"
@@ -49,7 +50,7 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "- English: 'QQ', 'WeChat', 'Calculator', 'Notepad', 'Chrome'\n"
                 "- Mixed: 'QQ Music', 'Microsoft Word', 'Adobe Photoshop'\n\n"
                 "The system will try multiple launch strategies including direct execution, system commands, "
-                "and path searching to find and start the application."
+                "and path searching to find and start the application.")
             ),
             PropertyList([Property("app_name", PropertyType.STRING)]),
             launch_application,
@@ -57,7 +58,7 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
         McpTool(
             "self.application.scan_installed",
             (
-                "Scan and list all installed applications on the system. This tool provides a comprehensive list "
+                t("Scan and list all installed applications on the system. This tool provides a comprehensive list "
                 "of available applications that can be launched using the launch tool. It scans system directories, "
                 "registry (Windows), and application folders to find installed software.\n"
                 "Use this tool when:\n"
@@ -70,7 +71,7 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
                 "name for reference.\n\n"
                 "After scanning, use the 'name' field from results with self.application.launch to start applications. "
                 "For example, if scan shows {name: 'QQ', display_name: 'QQ音乐'}, use self.application.launch "
-                "with app_name='QQ' to launch it."
+                "with app_name='QQ' to launch it.")
             ),
             PropertyList(
                 [Property("force_refresh", PropertyType.BOOLEAN, default_value=False)]
@@ -126,4 +127,4 @@ def register_app_tools(add_tool: Callable[[McpTool], None]) -> None:
 
     for tool in tools:
         add_tool(tool)
-    logger.info("已注册 %d 个应用 MCP 工具（register_app_tools）", len(tools))
+    logger.info(t("已注册 %d 个应用 MCP 工具（register_app_tools）"), len(tools))

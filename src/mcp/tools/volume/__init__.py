@@ -1,7 +1,7 @@
-"""音量控制工具.
+"""volume control tools.
 
-- VolumeController / 平台后端：见 volume_controller / windows|macos|linux
-- register_volume_tools: 向 McpServer 注册（闭包持有 controller，无模块单例）
+- VolumeController / platform backend: see volume_controller / windows|macos|linux
+- register_volume_tools: Register with McpServer (closure holds controller, no module singleton)
 """
 
 from .register import create_volume_controller, register_volume_tools

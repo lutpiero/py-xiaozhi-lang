@@ -1,4 +1,4 @@
-// 无边框可调整大小的窗口基类
+// Borderless resizable window base class
 import QtQuick
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
@@ -13,19 +13,19 @@ Window {
     minimumWidth: 480
     minimumHeight: 360
 
-    // 边缘拖拽调整大小的边距
+    // Edge drag resize margins
     property int resizeMargin: 8
 
-    // 是否最大化或全屏
+    // Whether to maximize or full screen
     property bool isMaximized: root.visibility === Window.Maximized || root.visibility === Window.FullScreen
 
-    // 内容区域
+    // Content area
     default property alias content: contentArea.data
 
-    // 更新主题的窗口宽度
+    // Update the window width of the theme
     onWidthChanged: Theme.windowWidth = width
 
-    // 主容器（带圆角和边框）
+    // Main container (with rounded corners and borders)
     Rectangle {
         id: container
         anchors.fill: parent
@@ -36,7 +36,7 @@ Window {
         border.width: root.isMaximized ? 0 : 1
         border.color: Theme.border
 
-        // 使用 layer 实现圆角裁剪
+        // Use layer to achieve rounded corner cropping
         layer.enabled: !root.isMaximized
         layer.effect: OpacityMask {
             maskSource: Rectangle {
@@ -46,15 +46,15 @@ Window {
             }
         }
 
-        // 内容区域
+        // Content area
         Item {
             id: contentArea
             anchors.fill: parent
         }
     }
 
-    // 边缘调整大小的 MouseArea - 放在顶层（最大化时隐藏）
-    // 左边缘
+    // Edge-resized MouseArea - placed on top (hidden when maximized)
+    // left edge
     MouseArea {
         visible: !root.isMaximized
         width: resizeMargin
@@ -65,7 +65,7 @@ Window {
         onPressed: root.startSystemResize(Qt.LeftEdge)
     }
 
-    // 右边缘
+    // right edge
     MouseArea {
         visible: !root.isMaximized
         width: resizeMargin
@@ -76,7 +76,7 @@ Window {
         onPressed: root.startSystemResize(Qt.RightEdge)
     }
 
-    // 上边缘
+    // Top edge
     MouseArea {
         visible: !root.isMaximized
         width: parent.width - resizeMargin * 2
@@ -87,7 +87,7 @@ Window {
         onPressed: root.startSystemResize(Qt.TopEdge)
     }
 
-    // 下边缘
+    // Lower edge
     MouseArea {
         visible: !root.isMaximized
         width: parent.width - resizeMargin * 2
@@ -98,7 +98,7 @@ Window {
         onPressed: root.startSystemResize(Qt.BottomEdge)
     }
 
-    // 左上角
+    // upper left corner
     MouseArea {
         visible: !root.isMaximized
         width: resizeMargin
@@ -109,7 +109,7 @@ Window {
         onPressed: root.startSystemResize(Qt.LeftEdge | Qt.TopEdge)
     }
 
-    // 右上角
+    // Upper right corner
     MouseArea {
         visible: !root.isMaximized
         width: resizeMargin
@@ -120,7 +120,7 @@ Window {
         onPressed: root.startSystemResize(Qt.RightEdge | Qt.TopEdge)
     }
 
-    // 左下角
+    // lower left corner
     MouseArea {
         visible: !root.isMaximized
         width: resizeMargin
@@ -131,7 +131,7 @@ Window {
         onPressed: root.startSystemResize(Qt.LeftEdge | Qt.BottomEdge)
     }
 
-    // 右下角
+    // Lower right corner
     MouseArea {
         visible: !root.isMaximized
         width: resizeMargin

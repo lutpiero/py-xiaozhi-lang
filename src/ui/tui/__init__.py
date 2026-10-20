@@ -1,4 +1,4 @@
-"""TUI 模式：基于 Textual 的全屏终端界面（可选 extra: tui）."""
+"""TUI mode: Textual-based full-screen terminal interface (optional extra: tui)."""
 
 from src.ui.tui.manager import TuiViewManager
 
